@@ -3,7 +3,7 @@ bin/
 materials/
 data/
 output/
-models/
+/models/
 __pycache__/
 *.pyc
 .pytest_cache/
