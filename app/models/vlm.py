@@ -125,6 +125,8 @@ class VLM(ModelProvider):
             return self._describe_openai(frames, prompt)
         llm, mmproj_path = get_gguf_llm(self.model, self.device)
         import tempfile, os
+        # 确定性推理：零温度消除随机幻觉，top_p=1 全量采样，max_tokens 上限约束
+        _det = {"temperature": 0.0, "top_p": 1.0, "max_tokens": 700}
         # frames 为图像 ndarray 列表：多模态 GGUF 推理需内置 mmproj，无则降级纯文本
         if frames and mmproj_path is not None:
             tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
@@ -137,11 +139,12 @@ class VLM(ModelProvider):
                         {"type": "image_url", "image_url": {"url": f"file://{tmp.name}"}},
                         {"type": "text", "text": prompt},
                     ]}],
+                    **_det,
                 )
             finally:
                 os.unlink(tmp.name)
         else:
-            out = llm(prompt)
+            out = llm(prompt, **_det)
         choice = out["choices"][0] if out.get("choices") else {}
         raw = choice.get("message", {}).get("content") if isinstance(choice.get("message"), dict) else choice.get("text", out.get("content", ""))
         return parse_vlm_json(raw)
