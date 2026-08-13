@@ -147,14 +147,14 @@ def test_setup_logging_creates_file(tmp_path):
 ```powershell
 py -3.11 -m venv venv
 venv\Scripts\python.exe -m pip install --upgrade pip
-venv\Scripts\python.exe -m pip install PyYAML PySceneDetect opencv-python rank-bm25 numpy
+venv\Scripts\python.exe -m pip install PyYAML scenedetect opencv-python rank-bm25 numpy
 ```
 
 `requirements.txt` 内容固定为上述包（附主版本号）：
 
 ```
 PyYAML>=6.0
-PySceneDetect>=0.6.4
+scenedetect>=0.6.4
 opencv-python>=4.8
 rank-bm25>=0.2.2
 numpy>=1.26
@@ -325,7 +325,10 @@ def load_settings(config_path: Path | None = None) -> Settings:
         video_format=merge["render"]["format"],
         width=int(w), height=int(h),
     )
-    if (root / "bin" / "ffmpeg" / "ffmpeg.exe").exists():
+    if (root / "bin" / "ffmpeg" / "bin" / "ffmpeg.exe").exists():
+        s.ffmpeg = str(root / "bin" / "ffmpeg" / "bin" / "ffmpeg.exe")
+        s.ffprobe = str(root / "bin" / "ffmpeg" / "bin" / "ffprobe.exe")
+    elif (root / "bin" / "ffmpeg" / "ffmpeg.exe").exists():
         s.ffmpeg = str(root / "bin" / "ffmpeg" / "ffmpeg.exe")
         s.ffprobe = str(root / "bin" / "ffmpeg" / "ffprobe.exe")
     return s
@@ -649,8 +652,9 @@ from app.utils.paths import project_root
 def find_ffmpeg(settings) -> tuple[str, str]:
     """返回 (ffmpeg, ffprobe)；优先 bin/ffmpeg，其次 PATH，都没有则抛 RunError 提示安装。"""
     p = settings.bin_dir / "ffmpeg"
-    if (p / "ffmpeg.exe").exists():
-        return str(p / "ffmpeg.exe"), str(p / "ffprobe.exe")
+    for cand in (p / "bin", p):
+        if (cand / "ffmpeg.exe").exists():
+            return str(cand / "ffmpeg.exe"), str(cand / "ffprobe.exe")
     ff = shutil.which("ffmpeg")
     if ff:
         base = Path(ff).parent
@@ -991,7 +995,7 @@ def test_is_image():
 from dataclasses import dataclass
 from pathlib import Path
 import scenedetect
-from scenedetect import SceneManager, split_video_ffmpeg
+from scenedetect import SceneManager
 from scenedetect.detectors import ContentDetector
 from app.analyzer.media import SUPPORTED
 
@@ -1039,7 +1043,7 @@ def detect_shots(path, scene_threshold: float = 0.35,
     return shots
 ```
 
-倒计时注意：`scenedetect` v0.6 的 `SceneManager`、`ContentDetector` API 如与上述不一致，按项目 README（`venv\Scripts\python.exe -m pip show PySceneDetect` 确认版本）核对后按实际 API 调整。`get_seconds()` 对 `FrameTimecode` 有效。
+倒计时注意：工作区已安装 `scenedetect==0.7.1`。0.6 的 `VideoManager` 已移除（用 `open_video`），`split_video_ffmpeg` 移到 `scenedetect.video_splitter`（本任务不用它，已从 import 移除）。若 API 与上文不一致，按 `venv\Scripts\python.exe -m pip show scenedetect` 确认版本后按实际 API 调整。`get_seconds()` 对 `FrameTimecode` 有效。
 
 - [ ] **步骤 4：运行测试验证通过**
 
@@ -1311,8 +1315,8 @@ import re
 from app.models.base import ModelProvider
 
 def vlm_repair_json(raw: str) -> str:
-    # 截取第一个 { 到最后一个 }，再补全平衡括号
-    s = raw[raw.find("{"):raw.rfind("}") + 1] if "{" in raw else raw
+    # 从首个 { 截到末尾（无 } 时不截空），再补全平衡括号
+    s = raw[raw.find("{"):] if "{" in raw else raw
     if not s:
         raise ValueError("输出中不包含 JSON")
     s = re.sub(r'[\x00-\x1f]', ' ', s)
