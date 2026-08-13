@@ -1,3 +1,4 @@
+# 渲染命令集中在 app/editors/renderer.py，本文件保持 probe 单一职责
 import json
 from pathlib import Path
 from app.utils.process import run

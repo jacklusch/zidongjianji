@@ -58,6 +58,16 @@ def cmd_plan(args):
     out = run_plan(settings, Path(args.script), project=args.project, log=log)
     print(f"edit_plan: {out}")
 
+def cmd_render(args):
+    from pathlib import Path
+    from app.pipeline.render_pipeline import run_render
+    from app.utils.process import find_ffmpeg
+    settings = load_settings()
+    settings.ffmpeg, settings.ffprobe = find_ffmpeg(settings)
+    log = setup_logging(settings.logs_dir, "render")
+    preview, final = run_render(settings, Path(args.plan), log=log)
+    print(f"preview: {preview}\nfinal: {final}")
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="app.main", description="本地 AI 视频剪辑系统")
     sub = p.add_subparsers(dest="command", required=True)
@@ -77,6 +87,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("script")
     s.add_argument("--project", default="demo")
     s.set_defaults(func=cmd_plan)
+    s = sub.add_parser("render", help="按 edit_plan 渲染")
+    s.add_argument("plan")
+    s.set_defaults(func=cmd_render)
     return p
 
 def main(argv=None):
