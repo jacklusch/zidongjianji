@@ -17,3 +17,14 @@ def test_validate_bad_timecode(tmp_path, sample_video):
     plan["timeline"][0]["out"] = -1.0
     errors, warnings = validate_edit_plan(plan)
     assert errors
+
+def test_validate_missing_asset(tmp_path):
+    plan = _plan()
+    errors, warnings = validate_edit_plan(plan, assets_root=tmp_path)
+    assert any("素材不存在" in e for e in errors)
+
+def test_validate_absolute_source_with_assets_root(tmp_path, sample_video):
+    plan = _plan()
+    plan["timeline"][0]["source"] = str(sample_video)
+    errors, warnings = validate_edit_plan(plan, assets_root=tmp_path)
+    assert not errors

@@ -30,6 +30,7 @@ def run_plan(settings, script_path: Path, project: str = "demo", log=None) -> Pa
         if m:
             used.add(m.selected_shot)
             last_used = {m.selected_shot}
+            m.segment_id = seg.id
             match_results.append({"segment_id": seg.id, "selected": asdict(m)})
         matches.append(m)
 
@@ -39,7 +40,7 @@ def run_plan(settings, script_path: Path, project: str = "demo", log=None) -> Pa
     items, missing, warnings = build_timeline(segs, matches, project, str(script_path))
     plan = EditPlan(project=project, source_script=str(script_path), timeline=items,
                     missing=missing, warnings=warnings)
-    errors, warns = validate_edit_plan(plan.to_dict())
+    errors, warns = validate_edit_plan(plan.to_dict(), assets_root=settings.materials_dir)
     plan.warnings += warns
     if errors:
         plan.warnings += [f"校验错误: {e}" for e in errors]

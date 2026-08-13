@@ -53,9 +53,7 @@ def cmd_search(args):
 def cmd_plan(args):
     from pathlib import Path
     from app.pipeline.matching_pipeline import run_plan
-    from app.utils.process import find_ffmpeg
     settings = load_settings()
-    settings.ffmpeg, settings.ffprobe = find_ffmpeg(settings)
     log = setup_logging(settings.logs_dir, "plan")
     out = run_plan(settings, Path(args.script), project=args.project, log=log)
     print(f"edit_plan: {out}")

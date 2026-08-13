@@ -6,8 +6,10 @@ def validate_edit_plan(plan: dict, assets_root: Path | None = None) -> tuple[lis
     warnings: list[str] = []
     for item in plan.get("timeline", []):
         src = Path(item["source"])
-        if assets_root is not None and not (assets_root / src).exists():
-            errors.append(f"素材不存在: {item['source']}")
+        if assets_root is not None:
+            exists = src.exists() if src.is_absolute() else (assets_root / src).exists()
+            if not exists:
+                errors.append(f"素材不存在: {item['source']}")
         out, inn = item.get("out", 0.0), item.get("in", 0.0)
         if inn < 0 or out <= inn:
             errors.append(f"非法时间码: in={inn} out={out}")
