@@ -13,6 +13,26 @@ def _fmt_range(start: float, end: float) -> str:
     return f"{fmt(start)}-{fmt(end)}"
 
 
+def _subdivide(shots, window: float = 5.0):
+    """把超过 window 秒的镜头按固定窗口切分为子段（长镜头/无切点视频用）。"""
+    parts = []
+    for i, shot in enumerate(shots):
+        if shot.duration <= window:
+            parts.append(shot)
+            continue
+        t = shot.start
+        idx = 1
+        while t < shot.end - 1e-6:
+            end = min(t + window, shot.end)
+            from types import SimpleNamespace
+            parts.append(SimpleNamespace(
+                shot_id=f"{shot.shot_id}_{idx:03d}",
+                start=t, end=end, duration=end - t))
+            t = end
+            idx += 1
+    return parts
+
+
 def _shot_frames(video_path, shot, settings, thumb_dir, shot_id) -> list:
     frames = []
     times = sample_times(shot.start, shot.end, settings.frames_min, settings.frames_max)
@@ -61,8 +81,11 @@ def _summarize(shots, analyses) -> dict:
     }
 
 
-def describe_video(settings, video_path, log=None) -> Path:
-    """分析单个视频，输出 data/descriptions/<文件名>.md。"""
+def describe_video(settings, video_path, log=None, window: float = 5.0) -> Path:
+    """分析单个视频，输出 data/descriptions/<文件名>.md。
+
+    window: 镜头细分窗口（秒）。长镜头/无切点视频会按此窗口切分为多个时间段。
+    """
     video_path = Path(video_path)
     if not video_path.exists():
         raise FileNotFoundError(f"文件不存在: {video_path}")
@@ -77,6 +100,7 @@ def describe_video(settings, video_path, log=None) -> Path:
 
     shots = detect_shots(str(video_path), settings.scene_threshold,
                          settings.min_shot_duration, settings.ffmpeg)
+    shots = _subdivide(shots, window=window)
     analyses = []
     for shot in shots:
         frames = _shot_frames(video_path, shot, settings, thumb_dir, shot.shot_id)

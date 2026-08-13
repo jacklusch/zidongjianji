@@ -40,3 +40,18 @@ def test_summarize_aggregates():
     assert "桌子" in summary["objects"]
     assert summary["people"] == 2
     assert "室内" in summary["environments"]
+
+def test_subdivide_long_shot():
+    from app.analyzer.describe import _subdivide
+    shots = [FakeShot("s1", 0.0, 25.0, 25.0)]
+    parts = _subdivide(shots, window=5.0)
+    assert len(parts) == 5
+    assert abs(parts[0].start - 0.0) < 1e-6
+    assert abs(parts[0].end - 5.0) < 1e-6
+    assert abs(parts[-1].end - 25.0) < 1e-6
+
+def test_subdivide_keeps_short_shots():
+    from app.analyzer.describe import _subdivide
+    shots = [FakeShot("s1", 0.0, 3.0, 3.0)]
+    parts = _subdivide(shots, window=5.0)
+    assert len(parts) == 1

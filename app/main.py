@@ -69,7 +69,7 @@ def cmd_describe(args):
     settings = load_settings()
     settings.ffmpeg, settings.ffprobe = find_ffmpeg(settings)
     log = setup_logging(settings.logs_dir, "describe")
-    out = describe_video(settings, Path(args.video), log=log)
+    out = describe_video(settings, Path(args.video), log=log, window=args.window)
     print(f"视频内容描述: {out}")
     print(out.read_text(encoding="utf-8"))
 
@@ -133,6 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_export)
     s = sub.add_parser("describe", help="完整描述单个视频内容（时间线+概述+汇总）")
     s.add_argument("video")
+    s.add_argument("--window", type=float, default=5.0, help="镜头细分窗口秒数（长镜头/无切点视频默认 5 秒）")
     s.set_defaults(func=cmd_describe)
     s = sub.add_parser("plan", help="脚本→检索→匹配→edit_plan")
     s.add_argument("script")

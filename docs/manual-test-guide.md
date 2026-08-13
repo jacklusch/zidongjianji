@@ -227,12 +227,16 @@ venv\Scripts\python.exe -m app.main export
 ### 3.6 describe —— 完整描述单个视频内容
 
 ```powershell
+# 默认按镜头切分（无切点的长镜头按 5 秒窗口细分）
 venv\Scripts\python.exe -m app.main describe materials\factory01.mp4
+
+# 自定义细分窗口（如 10 秒）
+venv\Scripts\python.exe -m app.main describe materials\factory01.mp4 --window 10
 ```
 
 **预期**：直接分析该视频（无需先索引），生成 `data\descriptions\factory01.md`，包含三部分：
 - **整体概述**：一句话总结视频内容
-- **分镜头时间线**：每镜头的时间范围 + VLM 画面描述 + 对象/动作/环境
+- **分镜头时间线**：每时间段的时间范围 + VLM 画面描述 + 对象/动作/环境（`--window` 控制长镜头/无切点视频的细分粒度，默认 5 秒）
 - **内容汇总**：出现的对象/动作/环境去重列表、最大人数、镜头数、总时长
 
 ### 3.7 search —— 语义搜索
