@@ -34,8 +34,12 @@ def index_one(settings, db, rel: str, info: MediaInfo, mtime: float, log) -> dic
     mid = db.upsert_media(info.filename, rel, info.duration, info.width, info.height,
                           info.fps, info.codec, info.audio, info.size, h, mtime)
     db.delete_shots_for_media(mid)
-    shots = detect_shots(str(info.path), settings.scene_threshold,
-                         settings.min_shot_duration, settings.ffmpeg)
+    try:
+        shots = detect_shots(str(info.path), settings.scene_threshold,
+                             settings.min_shot_duration, settings.ffmpeg)
+    except Exception as e:
+        db.delete_media(rel)
+        raise RuntimeError(f"{rel} 场景切分失败: {e}") from e
     n = 0
     for sh in shots:
         db.upsert_shot(sh.shot_id, mid, sh.start, sh.end, sh.duration,

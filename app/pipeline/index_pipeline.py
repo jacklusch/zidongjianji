@@ -28,7 +28,12 @@ def run_index(settings, analyze=True, force_analyze=False, log=None) -> dict:
                 report["reanalyzed"] = report.get("reanalyzed", 0) + 1
             continue
         db.delete_media(rel)
-        r = index_one(settings, db, rel, info, mtime, log)
+        try:
+            r = index_one(settings, db, rel, info, mtime, log)
+        except Exception as e:
+            log.warning(f"  [index] {rel} 索引失败，跳过: {e}")
+            report["failed"] = report.get("failed", 0) + 1
+            continue
         report["media"] += 1
         report["shots"] += r["shots_idx"]
         report["new" if state == "new" else "changed"] += 1
