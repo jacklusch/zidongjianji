@@ -5,8 +5,18 @@ from app.index.embeddings import build_corpus, shot_search_text
 
 def _tokenize(text: str) -> list[str]:
     import re
-    # 保留中英文字符序列，转为小写
-    return [t.lower() for t in re.findall(r"[\u4e00-\u9fff\w]+", text or "")]
+    # 中文用 jieba 分词，英文/数字保持完整词，统一小写
+    toks = []
+    for seg in re.findall(r"[\u4e00-\u9fff]+|[a-zA-Z0-9_]+", text or ""):
+        if seg and seg[0] >= "\u4e00":
+            try:
+                import jieba
+                toks.extend(t for t in jieba.lcut(seg) if t.strip())
+            except ImportError:
+                toks.append(seg)
+        else:
+            toks.append(seg.lower())
+    return toks
 
 class SearchBackend:
     def __init__(self, settings, rebuild=True):
@@ -25,7 +35,10 @@ class SearchBackend:
             return []
         scores = self.bm25.get_scores(toks)
         ranked = sorted(zip(self.ids, scores), key=lambda x: -x[1])
-        # 命中文档可能出现负分（rank_bm25 对出现在半数以上文档的词做 idf 下限），故用 != 0 过滤
+        # 优先返回正分命中；无正分时（如单文档语料 idf 退化）保留排序靠前的候选
+        positive = [(sid, float(s)) for sid, s in ranked[:top_k] if s > 0]
+        if positive:
+            return positive
         return [(sid, float(s)) for sid, s in ranked[:top_k] if s != 0]
 
 def _load_corpus(settings):

@@ -13,32 +13,19 @@ class ASR(ModelProvider):
             from funasr import AutoModel
             model = AutoModel(model=self.model)
             res = model.generate(input=str(audio_path))
-            # paraformer 返回 list[dict]：{"key","text","timestamp": [[s,e], ...]}
+            # paraformer 返回 list[dict]：{"key","text","timestamp"}（timestamp 需 VAD+punc 模型）
             segs = []
             for r in res:
-                text = r.get("text", "")
+                text = (r.get("text") or "").strip()
+                if not text:
+                    continue
                 ts = r.get("timestamp") or []
                 if not ts:
                     segs.append({"start": 0.0, "end": 0.0, "text": text})
                     continue
-                for (s, e), word in zip(ts, _split_words(text, len(ts))):
-                    segs.append({"start": float(s) / 1000.0, "end": float(e) / 1000.0, "text": word})
+                for (s, e) in ts:
+                    segs.append({"start": float(s) / 1000.0, "end": float(e) / 1000.0,
+                                 "text": text})
             return segs
         except Exception as e:
             raise RuntimeError(f"FunASR 转写失败: {e}") from e
-
-def _split_words(text: str, n: int) -> list[str]:
-    """把整句按 timestamp 段数粗略切分（paraformer 无逐词 text 时兜底）。"""
-    if n <= 1:
-        return [text]
-    chars = list(text)
-    seg = max(1, len(chars) // n)
-    words = []
-    for i in range(n):
-        if i >= len(chars):
-            words.append("")
-        elif i == n - 1:
-            words.append("".join(chars[i * seg:]))
-        else:
-            words.append("".join(chars[i * seg:(i + 1) * seg]))
-    return words

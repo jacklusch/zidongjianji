@@ -1,9 +1,23 @@
 import pytest
-from app.index.search import SearchBackend
+from app.index.search import SearchBackend, _tokenize
 from app.config.settings import load_settings
 from app.pipeline.index_pipeline import run_index
 
-def test_search_finds_by_filename(tmp_path, sample_video, ffmpeg, ffprobe, monkeypatch):
+def test_tokenize_segments_chinese():
+    toks = _tokenize("管道疏通剂除味剂")
+    assert "管道" in toks
+    assert "疏通" in toks
+
+def test_tokenize_mixed_chinese_english():
+    toks = _tokenize("factory01 画面亮度")
+    assert "factory01" in toks
+    assert "画面" in toks or "亮度" in toks
+
+def test_tokenize_empty():
+    assert _tokenize("") == []
+    assert _tokenize(None) == []
+
+def test_search_finds_chinese_transcript(tmp_path, sample_video, ffmpeg, ffprobe, monkeypatch):
     import shutil
     mat = tmp_path / "materials"
     mat.mkdir()

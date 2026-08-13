@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS visual_analysis (
 CREATE TABLE IF NOT EXISTS transcripts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     shot_id TEXT NOT NULL REFERENCES shots(shot_id),
-    seg_index INTEGER, start REAL, end REAL, text TEXT, speaker TEXT
+    seg_index INTEGER, start REAL, end REAL, text TEXT, speaker TEXT,
+    UNIQUE(shot_id, seg_index)
 );
 CREATE TABLE IF NOT EXISTS embeddings (
     shot_id TEXT PRIMARY KEY REFERENCES shots(shot_id),
@@ -127,7 +128,9 @@ class Database:
 
     def upsert_transcript(self, shot_id, seg_index, start, end, text, speaker=""):
         self.conn.execute(
-            "INSERT INTO transcripts (shot_id,seg_index,start,end,text,speaker) VALUES (?,?,?,?,?,?)",
+            """INSERT INTO transcripts (shot_id,seg_index,start,end,text,speaker) VALUES (?,?,?,?,?,?)
+               ON CONFLICT(shot_id, seg_index) DO UPDATE SET
+                 start=excluded.start, end=excluded.end, text=excluded.text, speaker=excluded.speaker""",
             (shot_id, seg_index, start, end, text, speaker))
         self.conn.commit()
 

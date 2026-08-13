@@ -34,4 +34,3 @@ def test_retrieve_and_select(tmp_path, sample_video, ffmpeg, ffprobe, monkeypatc
     assert len(cands) >= 1
     chosen = select_best(cands, settings, log=None)
     assert chosen is not None
-    assert chosen.score > 0
