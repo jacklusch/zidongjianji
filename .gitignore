@@ -1,0 +1,10 @@
+venv/
+bin/
+materials/
+data/
+output/
+models/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
