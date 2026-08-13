@@ -2,7 +2,7 @@ models:
   vlm: {provider: none, model: "", device: auto}
   vlm_reranker: {provider: none, model: "", device: auto}
   embedding: {provider: none, model: "", device: auto}
-  whisper: {provider: none, model: "", device: auto}
+  asr: {provider: none, model: "", device: auto}
   llm: {provider: none, model: "", device: auto}
 video:
   scene_threshold: 0.35
