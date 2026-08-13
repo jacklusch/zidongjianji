@@ -6,4 +6,5 @@ huggingface_hub>=0.23
 modelscope>=1.15
 llama-cpp-python>=0.2.80
 funasr>=1.1.6
+torchaudio>=2.2
 onnxruntime>=1.17

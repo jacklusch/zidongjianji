@@ -37,8 +37,8 @@ MODELS = {
         "note": "VLM 描述 + reranker（GGUF）",
     },
     "asr": {
-        "hf": "iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
-        "ms": "iic/speech_paraformer_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+        "hf": "funasr/paraformer-zh",
+        "ms": "iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
         "note": "FunASR 中文转写（paraformer-zh）",
     },
     "embedding": {
