@@ -54,25 +54,79 @@ _VLM_PROMPT = (
 )
 
 
+_RISK_KEYWORDS = ("刀", "血", "裸露", "危险", "违规", "烟雾", "火", "碰撞", "挤压")
+
+
 def vlm_visual_analysis(frames, vlm) -> VisualAnalysis:
-    """用 VLM 分析画面；解析失败或异常时降级为 fallback。"""
-    try:
-        data = vlm.describe(frames, _VLM_PROMPT)
-        if not isinstance(data, dict):
-            raise ValueError("VLM 返回非字典")
-        q = float(data.get("visual_quality", 0.5) or 0.5)
-        return VisualAnalysis(
-            description=str(data.get("description", "") or ""),
-            objects=_as_str_list(data.get("objects")),
-            actions=_as_str_list(data.get("actions")),
-            environment=str(data.get("environment", "") or ""),
-            shot_type=str(data.get("shot_type", "medium") or "medium"),
-            camera_motion=str(data.get("camera_motion", "static") or "static"),
-            people_count=int(data.get("people_count", 0) or 0),
-            visual_quality=float(min(1.0, max(0.0, q))),
-        )
-    except Exception:
+    """逐帧调用 VLM 并聚合结果；单帧失败跳过，全失败降级 fallback。
+
+    安全/异常字段从严（任一带风险词即保留）、体验数值取均值、描述去重拼接。
+    """
+    results = []
+    for f in frames:
+        try:
+            data = vlm.describe([f], _VLM_PROMPT)
+            if isinstance(data, dict):
+                results.append(data)
+        except Exception:
+            continue
+    if not results:
         return fallback_visual_analysis(frames)
+
+    all_objects, all_actions = [], []
+    environments = []
+    descriptions = []
+    people = 0
+    q_sum = 0.0
+    shot_types, cams = [], []
+    needs_review = False
+    for d in results:
+        objects = _as_str_list(d.get("objects"))
+        actions = _as_str_list(d.get("actions"))
+        for o in objects:
+            if o not in all_objects:
+                all_objects.append(o)
+        for a in actions:
+            if a not in all_actions:
+                all_actions.append(a)
+        env = str(d.get("environment", "") or "")
+        if env and env not in environments:
+            environments.append(env)
+        desc = str(d.get("description", "") or "")
+        if desc and desc not in descriptions:
+            descriptions.append(desc)
+        people = max(people, int(d.get("people_count", 0) or 0))
+        try:
+            q_sum += float(d.get("visual_quality", 0.5) or 0.5)
+        except (TypeError, ValueError):
+            q_sum += 0.5
+        shot_types.append(str(d.get("shot_type", "medium") or "medium"))
+        cams.append(str(d.get("camera_motion", "static") or "static"))
+        if "无法判定" in desc or "未知" in desc:
+            needs_review = True
+
+    risk_objects = [o for o in all_objects if any(k in o for k in _RISK_KEYWORDS)]
+    merged_objects = risk_objects + [o for o in all_objects if o not in risk_objects]
+    desc_text = " ".join(descriptions)
+    if needs_review:
+        desc_text += "（需人工复核）"
+    return VisualAnalysis(
+        description=desc_text,
+        objects=merged_objects,
+        actions=all_actions,
+        environment=", ".join(environments),
+        shot_type=_most_common(shot_types) or "medium",
+        camera_motion=_most_common(cams) or "static",
+        people_count=people,
+        visual_quality=float(min(1.0, max(0.0, q_sum / len(results)))),
+    )
+
+
+def _most_common(items: list[str]) -> str | None:
+    from collections import Counter
+    if not items:
+        return None
+    return Counter(items).most_common(1)[0][0]
 
 
 def _as_str_list(v) -> list[str]:
