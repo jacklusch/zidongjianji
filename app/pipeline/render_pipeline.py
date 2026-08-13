@@ -11,7 +11,8 @@ def run_render(settings, plan_path: Path, log=None) -> tuple[Path, Path]:
     preview = proj_dir / "preview.mp4"
     temp_out = settings.output_dir / f"{plan.get('project', 'demo')}_preview.mp4"
     render_plan(plan, temp_out, ffmpeg=settings.ffmpeg,
-                width=settings.width, height=settings.height, fps=settings.fps)
+                width=settings.width, height=settings.height, fps=settings.fps,
+                assets_root=settings.materials_dir)
     shutil.copyfile(temp_out, preview)
     shutil.copyfile(temp_out, final)
     if log:

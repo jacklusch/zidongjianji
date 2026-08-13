@@ -68,6 +68,29 @@ def cmd_render(args):
     preview, final = run_render(settings, Path(args.plan), log=log)
     print(f"preview: {preview}\nfinal: {final}")
 
+def cmd_build(args):
+    from pathlib import Path
+    from app.pipeline.index_pipeline import run_index
+    from app.pipeline.matching_pipeline import run_plan
+    from app.pipeline.render_pipeline import run_render
+    from app.utils.process import find_ffmpeg
+    settings = load_settings()
+    settings.materials_dir = Path(args.materials) if args.materials else settings.materials_dir
+    settings.ffmpeg, settings.ffprobe = find_ffmpeg(settings)
+    log = setup_logging(settings.logs_dir, "build")
+    log.info(f"build 开始，脚本={args.script}")
+    report = run_index(settings, analyze=True, log=log)
+    log.info(f"索引完成 {report}")
+    plan = run_plan(settings, Path(args.script), project=args.project, log=log)
+    plan_json = json.loads(plan.read_text(encoding="utf-8"))
+    if not plan_json.get("timeline"):
+        missing = len(plan_json.get("missing", []))
+        log.warning(f"无可用镜头（缺失 {missing} 段），跳过渲染")
+        print(f"无可用镜头（缺失 {missing} 段），未渲染；edit_plan: {plan}")
+        return
+    preview, final = run_render(settings, plan, log=log)
+    print(f"完成: preview={preview} final={final}")
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="app.main", description="本地 AI 视频剪辑系统")
     sub = p.add_subparsers(dest="command", required=True)
@@ -90,6 +113,11 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("render", help="按 edit_plan 渲染")
     s.add_argument("plan")
     s.set_defaults(func=cmd_render)
+    s = sub.add_parser("build", help="一键：index→plan→render")
+    s.add_argument("script")
+    s.add_argument("--project", default="demo")
+    s.add_argument("--materials", default=None)
+    s.set_defaults(func=cmd_build)
     return p
 
 def main(argv=None):

@@ -3,10 +3,13 @@ from pathlib import Path
 from app.utils.process import run
 
 
-def _normalize_timeline(plan: dict, outdir: Path, ffmpeg: str, width: int, height: int, fps: int) -> list[Path]:
+def _normalize_timeline(plan: dict, outdir: Path, ffmpeg: str, width: int, height: int, fps: int,
+                        assets_root: Path | None = None) -> list[Path]:
     parts = []
     for item in plan.get("timeline", []):
         src = Path(item["source"])
+        if not src.is_absolute() and assets_root is not None:
+            src = Path(assets_root) / src
         seg_dur = item.get("out", 0.0) - item.get("in", 0.0)
         if seg_dur <= 0:
             continue
@@ -49,11 +52,11 @@ def _concat(parts: list[Path], out: Path, ffmpeg: str) -> Path:
 
 
 def render_plan(plan: dict, out: Path, ffmpeg: str = "ffmpeg", width: int = 1920,
-                height: int = 1080, fps: int = 30) -> Path:
+                height: int = 1080, fps: int = 30, assets_root: Path | None = None) -> Path:
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     temp = out.parent / "render_tmp"
     temp.mkdir(parents=True, exist_ok=True)
-    parts = _normalize_timeline(plan, temp, ffmpeg, width, height, fps)
+    parts = _normalize_timeline(plan, temp, ffmpeg, width, height, fps, assets_root)
     _concat(parts, out, ffmpeg)
     return out
