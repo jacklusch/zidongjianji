@@ -13,7 +13,8 @@ from dataclasses import asdict
 
 def run_plan(settings, script_path: Path, project: str = "demo", log=None) -> Path:
     script_text = script_path.read_text(encoding="utf-8")
-    llm = LLM(settings.llm.provider, settings.llm.model, settings.llm.device)
+    llm = LLM(settings.llm.provider, settings.llm.model, settings.llm.device,
+              base_url=settings.llm.base_url, api_key=settings.llm.api_key)
     segs = parse_script(script_text, llm=llm)
     proj_dir = settings.projects_dir / project
     proj_dir.mkdir(parents=True, exist_ok=True)

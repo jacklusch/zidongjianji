@@ -6,7 +6,7 @@ from app.analyzer.visual import fallback_visual_analysis
 from app.analyzer.audio import transcribe
 
 def run_index(settings, analyze=True, force_analyze=False, log=None) -> dict:
-    """扫描 → 入库 →（可选）切分帧分析 + Whisper 转写。返回报告。"""
+    """扫描 → 入库 →（可选）切分帧分析 + ASR 转写。返回报告。"""
     if log is None:
         import logging
         log = logging.getLogger("index")

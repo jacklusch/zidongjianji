@@ -4,7 +4,6 @@ from pathlib import Path
 from app.models.base import ModelProvider
 
 _llm_cache = {}
-_llm_loaded_for = None
 
 def vlm_repair_json(raw: str) -> str:
     s = raw[raw.find("{"):] if "{" in raw else raw
@@ -22,11 +21,39 @@ def parse_vlm_json(raw: str) -> dict:
     except json.JSONDecodeError:
         return json.loads(vlm_repair_json(raw))
 
+def _find_mmproj(directory: Path):
+    files = sorted(directory.glob("mmproj-*.gguf"))
+    return files[0] if files else None
+
+def _resolve_gguf_paths(model_path: str):
+    """把 model_path（.gguf 文件或目录）解析为 (主模型文件, mmproj 或 None)。"""
+    p = Path(model_path)
+    if not p.exists():
+        raise RuntimeError(f"模型不存在: {model_path}")
+    if p.is_file():
+        return p, _find_mmproj(p.parent)
+    files = sorted(p.glob("*.gguf"))
+    if not files:
+        raise RuntimeError(f"目录中未找到 .gguf 文件: {model_path}")
+    mmproj = [f for f in files if f.name.startswith("mmproj")]
+    mains = [f for f in files if not f.name.startswith("mmproj")]
+    if not mains:
+        raise RuntimeError(f"目录中未找到主模型 .gguf（仅含 mmproj）: {model_path}")
+    def rank(f):
+        name = f.name.lower()
+        return (0 if "q4" in name else 1, -f.stat().st_size)
+    main = sorted(mains, key=rank)[0]
+    return main, (mmproj[0] if mmproj else None)
+
 def get_gguf_llm(model_path: str, device: str = "auto"):
-    """模块级单例：同一 GGUF 只加载一次（VLM 与 reranker 复用）。"""
-    global _llm_cache, _llm_loaded_for
+    """模块级单例：同一 GGUF 只加载一次（VLM 与 reranker 复用）。
+
+    返回 (llm, mmproj_path 或 None)。model_path 可为目录，自动 glob 出主
+    模型（优先含 q4 量化名、其次最大，mmproj-* 除外）与多模态 mmproj。
+    """
+    global _llm_cache
     key = f"{model_path}|{device}"
-    if key == _llm_loaded_for and key in _llm_cache:
+    if key in _llm_cache:
         return _llm_cache[key]
     from app.models.device import DeviceManager
     dev = DeviceManager(device)
@@ -35,12 +62,13 @@ def get_gguf_llm(model_path: str, device: str = "auto"):
         from llama_cpp import Llama
     except ImportError as e:
         raise RuntimeError("未安装 llama-cpp-python，请先 pip install -r requirements-models.txt") from e
-    if not Path(model_path).exists():
-        raise RuntimeError(f"模型文件不存在: {model_path}")
-    llm = Llama(model_path=str(model_path), n_gpu_layers=n_gpu, verbose=False)
-    _llm_cache[key] = llm
-    _llm_loaded_for = key
-    return llm
+    main_path, mmproj_path = _resolve_gguf_paths(model_path)
+    kwargs = {"model_path": str(main_path), "n_gpu_layers": n_gpu, "verbose": False}
+    if mmproj_path is not None:
+        kwargs["mmproj"] = str(mmproj_path)
+    llm = Llama(**kwargs)
+    _llm_cache[key] = (llm, mmproj_path)
+    return llm, mmproj_path
 
 class VLM(ModelProvider):
     name = "vlm"
@@ -51,11 +79,10 @@ class VLM(ModelProvider):
             raise RuntimeError("VLM 未启用（provider=none）")
         if self.provider == "openai":
             return self._describe_openai(frames, prompt)
-        llm = get_gguf_llm(self.model, self.device)
+        llm, mmproj_path = get_gguf_llm(self.model, self.device)
         import tempfile, os
-        # frames 为图像 ndarray 列表：暂存首帧为临时图并交给多模态 GGUF 推理
-        # llama.cpp 多模态在 Python 绑定中用 chat 接口（需内置 mmproj），此处走文本协议
-        if frames:
+        # frames 为图像 ndarray 列表：多模态 GGUF 推理需内置 mmproj，无则降级纯文本
+        if frames and mmproj_path is not None:
             tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
             import cv2
             cv2.imwrite(tmp.name, frames[0])
@@ -75,7 +102,10 @@ class VLM(ModelProvider):
         raw = choice.get("message", {}).get("content") if isinstance(choice.get("message"), dict) else choice.get("text", out.get("content", ""))
         return parse_vlm_json(raw)
     def _describe_openai(self, frames, prompt: str) -> dict:
-        from openai import OpenAI
+        try:
+            from openai import OpenAI
+        except ImportError as e:
+            raise RuntimeError("未安装 openai SDK（pip install openai）") from e
         import tempfile, os, cv2, base64
         key = self.api_key or os.environ.get("OPENAI_API_KEY", "")
         if not key:

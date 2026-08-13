@@ -1,7 +1,7 @@
 from app.models.device import DeviceManager
 from app.models.base import ModelProvider
 from app.models.llm import LLM
-from app.models.vlm import vlm_repair_json
+from app.models.vlm import vlm_repair_json, _resolve_gguf_paths, get_gguf_llm
 from app.models.embedding import Embedder
 from app.models.vlm import VLM
 
@@ -53,9 +53,49 @@ def test_vlm_local_text_completion(monkeypatch):
     class FakeLLM:
         def __call__(self, prompt):
             return {"choices": [{"text": '{"a": 1}'}]}
-    monkeypatch.setattr("app.models.vlm.get_gguf_llm", lambda model_path, device: FakeLLM())
+    monkeypatch.setattr("app.models.vlm.get_gguf_llm",
+                        lambda model_path, device: (FakeLLM(), None))
     v = VLM(provider="local", model="models/vlm/x.gguf", device="cpu")
     assert v.describe([], "prompt") == {"a": 1}
+
+def test_vlm_local_frames_without_mmproj_falls_back_to_text(monkeypatch):
+    class FakeLLM:
+        def __call__(self, prompt):
+            return {"choices": [{"text": '{"ok": true}'}]}
+    monkeypatch.setattr("app.models.vlm.get_gguf_llm",
+                        lambda model_path, device: (FakeLLM(), None))
+    v = VLM(provider="local", model="models/vlm/x.gguf", device="cpu")
+    assert v.describe([object()], "prompt") == {"ok": True}
+
+def test_resolve_gguf_paths_directory_prefers_q4_and_excludes_mmproj(tmp_path):
+    (tmp_path / "model-mix-Q4_K_M.gguf").write_bytes(b"b" * 10)
+    (tmp_path / "model-fp16.gguf").write_bytes(b"a" * 500)
+    (tmp_path / "mmproj-model-f16.gguf").write_bytes(b"m")
+    main, mm = _resolve_gguf_paths(str(tmp_path))
+    assert main.name == "model-mix-Q4_K_M.gguf"
+    assert mm is not None and mm.name == "mmproj-model-f16.gguf"
+
+def test_resolve_gguf_paths_single_file_uses_it(tmp_path):
+    (tmp_path / "x.gguf").write_bytes(b"x")
+    main, mm = _resolve_gguf_paths(str(tmp_path / "x.gguf"))
+    assert main.name == "x.gguf"
+    assert mm is None
+
+def test_gguf_cache_multientry(tmp_path, monkeypatch):
+    import sys, types
+    (tmp_path / "model-q4.gguf").write_bytes(b"x")
+    calls = []
+    class FakeLlama:
+        def __init__(self, **kw):
+            calls.append(kw)
+    monkeypatch.setitem(sys.modules, "llama_cpp", types.SimpleNamespace(Llama=FakeLlama))
+    mpath = str(tmp_path)
+    _ = get_gguf_llm(mpath, "cpu")
+    _ = get_gguf_llm(mpath, "cpu")
+    assert len(calls) == 1
+    llm2, _ = get_gguf_llm(mpath, "auto")
+    assert len(calls) == 2
+    assert llm2 is not None
 
 def test_llm_openai_calls_client(monkeypatch):
     llm = LLM(provider="openai", model="gpt-4o-mini", device="cpu", base_url="https://api.x.com/v1", api_key="sk-test")
@@ -78,3 +118,4 @@ def test_llm_openai_calls_client(monkeypatch):
     assert calls["client_kw"]["base_url"] == "https://api.x.com/v1"
     assert calls["client_kw"]["api_key"] == "sk-test"
     assert calls["model"] == "gpt-4o-mini"
+    assert calls["messages"][0]["content"] == "讲个故事"

@@ -9,4 +9,4 @@ models:
   vlm_reranker: {provider: none, model: "", device: auto, base_url: "", api_key: ""}
   asr:       {provider: none, model: "", device: auto, base_url: "", api_key: ""}
   embedding: {provider: none, model: "", device: auto, base_url: "", api_key: ""}
-# 其余配置段（video/matching/index/render）保持不变，见 config.yaml
+# 其余配置段（video/matching/index/render）保持不变，见 README 或由 scripts/install.ps1 生成

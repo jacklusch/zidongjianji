@@ -95,6 +95,7 @@ def write_config(root: Path, report: dict):
             target = root / "models" / role
             cfg_entry = models.setdefault(role, {})
             if role == "vlm":
+                # model 写为目录即可：get_gguf_llm 会 glob 主模型与 mmproj
                 cfg_entry["provider"] = "local"
                 cfg_entry["model"] = str(target)
             elif role == "asr":

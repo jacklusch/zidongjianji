@@ -33,4 +33,12 @@ def _split_words(text: str, n: int) -> list[str]:
         return [text]
     chars = list(text)
     seg = max(1, len(chars) // n)
-    return ["".join(chars[i * seg:(i + 1) * seg]) for i in range(n)]
+    words = []
+    for i in range(n):
+        if i >= len(chars):
+            words.append("")
+        elif i == n - 1:
+            words.append("".join(chars[i * seg:]))
+        else:
+            words.append("".join(chars[i * seg:(i + 1) * seg]))
+    return words
