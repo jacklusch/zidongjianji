@@ -50,7 +50,7 @@ _VLM_PROMPT = (
     "description(一句话中文描述画面), objects(主要物体中文列表), "
     "actions(正在发生的动作中文列表), environment(环境/场景中文), "
     "shot_type(镜头类型: close/medium/wide), camera_motion(运镜: static/pan/tilt/zoom), "
-    "people_count(人数整数)。"
+    "people_count(人数整数), visual_quality(0到1之间的画面质量评分)。"
 )
 
 
@@ -100,7 +100,7 @@ def vlm_visual_analysis(frames, vlm) -> VisualAnalysis:
         except (TypeError, ValueError):
             pass
         try:
-            q_sum += float(d.get("visual_quality", 0.5) or 0.5)
+            q_sum += float(d.get("visual_quality", 0.5))
         except (TypeError, ValueError):
             q_sum += 0.5
         shot_types.append(str(d.get("shot_type", "medium") or "medium"))

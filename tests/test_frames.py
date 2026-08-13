@@ -28,12 +28,13 @@ def test_vlm_visual_analysis_parses_struct():
             assert "JSON" in prompt
             return {"description": "工厂车间", "objects": ["机器"], "actions": ["运转"],
                     "environment": "车间", "shot_type": "medium", "camera_motion": "static",
-                    "people_count": 2}
+                    "people_count": 2, "visual_quality": 0.8}
     va = vlm_visual_analysis([np.zeros((10, 10, 3), dtype=np.uint8)], FakeVLM())
     assert va.description == "工厂车间"
     assert va.objects == ["机器"]
     assert va.environment == "车间"
     assert va.people_count == 2
+    assert abs(va.visual_quality - 0.8) < 1e-6
 
 
 def test_vlm_visual_analysis_falls_back_on_error():
