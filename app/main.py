@@ -74,6 +74,8 @@ def cmd_describe(args):
     print(out.read_text(encoding="utf-8"))
 
 def cmd_compare(args):
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     from pathlib import Path
     from app.analyzer.compare import compare_video
     settings = load_settings()
