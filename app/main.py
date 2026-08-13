@@ -73,6 +73,18 @@ def cmd_describe(args):
     print(f"视频内容描述: {out}")
     print(out.read_text(encoding="utf-8"))
 
+def cmd_compare(args):
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    from pathlib import Path
+    from app.analyzer.compare import compare_video
+    settings = load_settings()
+    settings.ffmpeg, settings.ffprobe = find_ffmpeg(settings)
+    log = setup_logging(settings.logs_dir, "compare")
+    out = compare_video(settings, Path(args.video), log=log, window=args.window)
+    print(f"VLM 对比报告: {out}")
+    print(out.read_text(encoding="utf-8"))
+
 def cmd_plan(args):
     from pathlib import Path
     from app.pipeline.matching_pipeline import run_plan
@@ -135,6 +147,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("video")
     s.add_argument("--window", type=float, default=5.0, help="镜头细分窗口秒数（长镜头/无切点视频默认 5 秒）")
     s.set_defaults(func=cmd_describe)
+    s = sub.add_parser("compare", help="对比本地/线上 VLM 画面描述")
+    s.add_argument("video")
+    s.add_argument("--window", type=float, default=5.0, help="镜头细分窗口秒数")
+    s.set_defaults(func=cmd_compare)
     s = sub.add_parser("plan", help="脚本→检索→匹配→edit_plan")
     s.add_argument("script")
     s.add_argument("--project", default="demo")

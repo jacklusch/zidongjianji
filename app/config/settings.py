@@ -6,6 +6,7 @@ from app.utils.paths import project_root
 _DEFAULTS = {
     "models": {"vlm": {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""},
                "vlm_reranker": {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""},
+               "vlm_compare": {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""},
                "embedding": {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""},
                "asr": {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""},
                "llm": {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""}},
@@ -38,6 +39,7 @@ class Settings:
     ffprobe: str = "ffprobe"
     vlm: ModelConfig = field(default_factory=ModelConfig)
     vlm_reranker: ModelConfig = field(default_factory=ModelConfig)
+    vlm_compare: ModelConfig = field(default_factory=ModelConfig)
     embedding: ModelConfig = field(default_factory=ModelConfig)
     asr: ModelConfig = field(default_factory=ModelConfig)
     llm: ModelConfig = field(default_factory=ModelConfig)
@@ -95,6 +97,7 @@ def load_settings(config_path: Path | None = None) -> Settings:
         bin_dir=root / "bin",
         vlm=ModelConfig(**merge["models"]["vlm"]),
         vlm_reranker=ModelConfig(**merge["models"]["vlm_reranker"]),
+        vlm_compare=ModelConfig(**merge["models"]["vlm_compare"]),
         embedding=ModelConfig(**merge["models"]["embedding"]),
         asr=ModelConfig(**merge["models"]["asr"]),
         llm=ModelConfig(**merge["models"]["llm"]),
