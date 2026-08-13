@@ -239,7 +239,15 @@ venv\Scripts\python.exe -m app.main describe materials\factory01.mp4 --window 10
 - **分镜头时间线**：每时间段的时间范围 + VLM 画面描述 + 对象/动作/环境（`--window` 控制长镜头/无切点视频的细分粒度，默认 5 秒）
 - **内容汇总**：出现的对象/动作/环境去重列表、最大人数、镜头数、总时长
 
-### 3.7 search —— 语义搜索
+### 3.7 compare —— 对比本地/线上 VLM 画面描述
+
+```powershell
+venv\Scripts\python.exe -m app.main compare materials\factory01.mp4
+```
+
+**预期**：生成 `data\descriptions\factory01_compare.md`，每镜头一行：时间码、本地 VLM 描述、线上 GLM-4V 描述、一致性（✅/❌）、差异说明。线上限流时该镜头标"线上失败"不中断。
+
+### 3.8 search —— 语义搜索
 
 ```powershell
 venv\Scripts\python.exe -m app.main search 香肠
@@ -248,7 +256,7 @@ venv\Scripts\python.exe -m app.main search 工厂
 
 **预期**：返回按相关度排序的候选镜头（shot_id、相似度、来源、时间码）。中文查询依赖素材文件名/描述词命中；若 corpus 词与查询无交集则结果为空属正常。
 
-### 3.8 plan —— 生成剪辑计划
+### 3.9 plan —— 生成剪辑计划
 
 准备脚本文件（例如 `scripts\demo.md`）：
 
@@ -267,7 +275,7 @@ venv\Scripts\python.exe -m app.main plan scripts\demo.md --project demo
 
 **预期**：生成 `data\projects\demo\script_plan.json`、`match_results.json`、`edit_plan.json`。`edit_plan.json` 的 timeline 项含 `script_id/source/in/out/duration/reason/confidence`；无匹配的片段进 `missing`。
 
-### 3.9 render —— 渲染成片
+### 3.10 render —— 渲染成片
 
 ```powershell
 venv\Scripts\python.exe -m app.main render data\projects\demo\edit_plan.json
@@ -275,7 +283,7 @@ venv\Scripts\python.exe -m app.main render data\projects\demo\edit_plan.json
 
 **预期**：生成 `data\projects\demo\preview.mp4` 与 `final.mp4`，大小 > 0。
 
-### 3.10 build —— 一键全流程
+### 3.11 build —— 一键全流程
 
 ```powershell
 venv\Scripts\python.exe -m app.main build scripts\demo.md --project demo
@@ -296,7 +304,7 @@ venv\Scripts\python.exe -m app.main build scripts\demo.md --project demo
 >   （两行分别命中 corpus 的 `视频镜头` 与 `画面亮度`，timeline 非空即可渲染）
 > - 启用 embedding（provider=local）后仍以 BM25 检索为主，中文长句匹配受限，这是已知限制（后续可引入中文分词改善）
 
-### 3.11 校验成片
+### 3.12 校验成片
 
 ```powershell
 bin\ffmpeg\bin\ffprobe.exe -v error -show_entries format=duration,size -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1 data\projects\demo\final.mp4
