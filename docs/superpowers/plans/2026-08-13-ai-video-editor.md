@@ -1315,8 +1315,8 @@ import re
 from app.models.base import ModelProvider
 
 def vlm_repair_json(raw: str) -> str:
-    # 截取第一个 { 到最后一个 }，再补全平衡括号
-    s = raw[raw.find("{"):raw.rfind("}") + 1] if "{" in raw else raw
+    # 从首个 { 截到末尾（无 } 时不截空），再补全平衡括号
+    s = raw[raw.find("{"):] if "{" in raw else raw
     if not s:
         raise ValueError("输出中不包含 JSON")
     s = re.sub(r'[\x00-\x1f]', ' ', s)
