@@ -71,7 +71,8 @@ class VLM(ModelProvider):
                 os.unlink(tmp.name)
         else:
             out = llm(prompt)
-        raw = out["choices"][0]["message"]["content"] if "choices" in out else out.get("content", "")
+        choice = out["choices"][0] if out.get("choices") else {}
+        raw = choice.get("message", {}).get("content") if isinstance(choice.get("message"), dict) else choice.get("text", out.get("content", ""))
         return parse_vlm_json(raw)
     def _describe_openai(self, frames, prompt: str) -> dict:
         from openai import OpenAI

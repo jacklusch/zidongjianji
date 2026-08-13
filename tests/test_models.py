@@ -49,6 +49,14 @@ def test_vlm_openai_missing_key_raises(monkeypatch):
     else:
         raise AssertionError("openai provider 缺 api_key 应抛 RuntimeError")
 
+def test_vlm_local_text_completion(monkeypatch):
+    class FakeLLM:
+        def __call__(self, prompt):
+            return {"choices": [{"text": '{"a": 1}'}]}
+    monkeypatch.setattr("app.models.vlm.get_gguf_llm", lambda model_path, device: FakeLLM())
+    v = VLM(provider="local", model="models/vlm/x.gguf", device="cpu")
+    assert v.describe([], "prompt") == {"a": 1}
+
 def test_llm_openai_calls_client(monkeypatch):
     llm = LLM(provider="openai", model="gpt-4o-mini", device="cpu", base_url="https://api.x.com/v1", api_key="sk-test")
     calls = {}
