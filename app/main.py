@@ -37,6 +37,19 @@ def cmd_analyze(args):
     log.info(f"analyze 完成: {rep}")
     print(json.dumps(rep, ensure_ascii=False, indent=2))
 
+def cmd_search(args):
+    from app.index.search import SearchBackend
+    from app.index.database import Database
+    settings = load_settings()
+    backend = SearchBackend(settings)
+    hits = backend.search(args.query, settings.top_k)
+    db = Database(settings.footage_db)
+    for sid, score in hits[:10]:
+        sh = next((s for s in db.get_all_shots() if s["shot_id"] == sid), {})
+        print(f"{score:6.3f} {sid:30s} {sh.get('source', '')} [{sh.get('start', 0)}-{sh.get('end', 0)}]")
+    db.close()
+    print(f"共 {len(hits)} 个结果")
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="app.main", description="本地 AI 视频剪辑系统")
     sub = p.add_subparsers(dest="command", required=True)
@@ -49,6 +62,9 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("analyze", help="对素材执行视觉/语音分析")
     s.add_argument("directory")
     s.set_defaults(func=cmd_analyze)
+    s = sub.add_parser("search", help="语义搜索素材")
+    s.add_argument("query")
+    s.set_defaults(func=cmd_search)
     return p
 
 def main(argv=None):
