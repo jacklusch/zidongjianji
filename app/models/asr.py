@@ -20,15 +20,39 @@ class ASR(ModelProvider):
                     continue
                 ts = r.get("timestamp") or []
                 if ts:
-                    chars = text.split()
-                    for i, ch in enumerate(chars):
-                        if i >= len(ts):
-                            break
-                        s, e = ts[i]
-                        segs.append({"start": float(s) / 1000.0, "end": float(e) / 1000.0,
-                                     "text": ch})
+                    segs.extend(_group_sentences(text, ts))
                 else:
                     segs.append({"start": 0.0, "end": 0.0, "text": text})
             return segs
         except Exception as e:
             raise RuntimeError(f"FunASR 转写失败: {e}") from e
+
+
+def _group_sentences(text: str, ts: list, gap_threshold_ms: int = 350) -> list[dict]:
+    """把逐字时间戳按相邻间隔断句，合并为句子级片段。"""
+    chars = text.split()
+    if not chars:
+        return []
+    groups = []
+    cur_chars = [chars[0]]
+    cur_ts = [ts[0]]
+    for i in range(1, len(chars)):
+        if i >= len(ts):
+            break
+        gap = ts[i][0] - ts[i - 1][1]
+        if gap > gap_threshold_ms:
+            groups.append((cur_chars, cur_ts))
+            cur_chars = [chars[i]]
+            cur_ts = [ts[i]]
+        else:
+            cur_chars.append(chars[i])
+            cur_ts.append(ts[i])
+    groups.append((cur_chars, cur_ts))
+    segs = []
+    for g_chars, g_ts in groups:
+        segs.append({
+            "start": float(g_ts[0][0]) / 1000.0,
+            "end": float(g_ts[-1][1]) / 1000.0,
+            "text": "".join(g_chars),
+        })
+    return segs
