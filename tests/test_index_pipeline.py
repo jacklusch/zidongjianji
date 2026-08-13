@@ -45,3 +45,24 @@ def test_run_index_failed_file_does_not_abort(tmp_path, sample_video, ffmpeg, ff
     assert report["failed"] == 1
     assert report["media"] == 1
     assert report["shots"] >= 1
+
+def test_run_index_analyze_failure_does_not_abort(tmp_path, sample_video, ffmpeg, ffprobe, monkeypatch):
+    import app.pipeline.index_pipeline as ip
+    other = sample_video.parent / "other.mp4"
+    shutil.copy(sample_video, other)
+    settings = load_settings()
+    monkeypatch.setattr(settings, "materials_dir", sample_video.parent)
+    monkeypatch.setattr(settings, "data_dir", tmp_path / "data")
+    monkeypatch.setattr(settings, "footage_dir", tmp_path / "data" / "footage")
+    monkeypatch.setattr(settings, "ffmpeg", ffmpeg)
+    monkeypatch.setattr(settings, "ffprobe", ffprobe)
+    real = ip._analyze_shot
+    def fake(settings, db, rel, info, log, report):
+        if rel.endswith("other.mp4"):
+            raise RuntimeError("whisper boom")
+        return real(settings, db, rel, info, log, report)
+    monkeypatch.setattr(ip, "_analyze_shot", fake)
+    report = run_index(settings)
+    assert report["failed"] == 1
+    assert report["media"] == 2
+    assert report.get("visual", 0) >= 1

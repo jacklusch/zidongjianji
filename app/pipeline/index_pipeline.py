@@ -24,7 +24,12 @@ def run_index(settings, analyze=True, force_analyze=False, log=None) -> dict:
         if state == "":
             report["skipped"] += 1
             if force_analyze:
-                _analyze_shot(settings, db, rel, info, log, report)
+                try:
+                    _analyze_shot(settings, db, rel, info, log, report)
+                except Exception as e:
+                    log.warning(f"  [index] {rel} 分析失败，跳过: {e}")
+                    report["failed"] = report.get("failed", 0) + 1
+                    continue
                 report["reanalyzed"] = report.get("reanalyzed", 0) + 1
             continue
         db.delete_media(rel)
@@ -38,7 +43,11 @@ def run_index(settings, analyze=True, force_analyze=False, log=None) -> dict:
         report["shots"] += r["shots_idx"]
         report["new" if state == "new" else "changed"] += 1
         if analyze:
-            _analyze_shot(settings, db, rel, info, log, report)
+            try:
+                _analyze_shot(settings, db, rel, info, log, report)
+            except Exception as e:
+                log.warning(f"  [index] {rel} 分析失败，跳过: {e}")
+                report["failed"] = report.get("failed", 0) + 1
     for rel in known - found:
         db.delete_media(rel)
         log.info(f"  [index] 移除已删除素材: {rel}")
