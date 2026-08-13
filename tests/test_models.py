@@ -1,4 +1,5 @@
 from app.models.device import DeviceManager
+from app.models.base import ModelProvider
 from app.models.llm import LLM
 from app.models.vlm import vlm_repair_json
 from app.models.embedding import Embedder
@@ -19,3 +20,29 @@ def test_llm_none_generates():
 def test_embedder_none_returns_none():
     emb = Embedder(provider="none", model="", device="cpu")
     assert emb.embed(["x"]) is None
+
+def test_provider_openai_available():
+    p = ModelProvider(provider="openai", model="m", device="cpu", base_url="u", api_key="k")
+    assert p.available() is True
+
+def test_llm_openai_calls_client(monkeypatch):
+    llm = LLM(provider="openai", model="gpt-4o-mini", device="cpu", base_url="https://api.x.com/v1", api_key="sk-test")
+    calls = {}
+    class FakeResp:
+        choices = [type("C", (), {"message": type("M", (), {"content": "你好"})()})()]
+    class FakeCompletions:
+        def create(self, **kw):
+            calls.update(kw)
+            return FakeResp()
+    class FakeChat:
+        completions = FakeCompletions()
+    class FakeOpenAI:
+        def __init__(self, **kw):
+            calls["client_kw"] = kw
+        chat = FakeChat()
+    monkeypatch.setattr("app.models.llm.OpenAI", FakeOpenAI)
+    out = llm.generate("讲个故事")
+    assert out == "你好"
+    assert calls["client_kw"]["base_url"] == "https://api.x.com/v1"
+    assert calls["client_kw"]["api_key"] == "sk-test"
+    assert calls["model"] == "gpt-4o-mini"
