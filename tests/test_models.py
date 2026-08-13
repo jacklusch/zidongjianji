@@ -35,6 +35,20 @@ def test_vlm_none_raises():
     else:
         raise AssertionError("provider=none 应抛 RuntimeError")
 
+def test_vlm_openai_missing_key_raises(monkeypatch):
+    import sys, types
+    fake = types.ModuleType("openai")
+    fake.OpenAI = object
+    monkeypatch.setitem(sys.modules, "openai", fake)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    v = VLM(provider="openai", model="m", device="cpu", api_key="")
+    try:
+        v.describe([], "描述")
+    except RuntimeError as e:
+        assert "api_key" in str(e)
+    else:
+        raise AssertionError("openai provider 缺 api_key 应抛 RuntimeError")
+
 def test_llm_openai_calls_client(monkeypatch):
     llm = LLM(provider="openai", model="gpt-4o-mini", device="cpu", base_url="https://api.x.com/v1", api_key="sk-test")
     calls = {}

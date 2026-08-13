@@ -75,11 +75,11 @@ class VLM(ModelProvider):
         return parse_vlm_json(raw)
     def _describe_openai(self, frames, prompt: str) -> dict:
         from openai import OpenAI
+        import tempfile, os, cv2, base64
         key = self.api_key or os.environ.get("OPENAI_API_KEY", "")
         if not key:
             raise RuntimeError("未配置 VLM api_key")
         client = OpenAI(base_url=self.base_url or None, api_key=key)
-        import tempfile, os, cv2, base64
         if frames:
             tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
             cv2.imwrite(tmp.name, frames[0])
