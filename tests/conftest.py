@@ -10,22 +10,23 @@ sys.path.insert(0, str(ROOT))
 def subprocess_run(cmd, **kw):
     return subprocess.run(cmd, capture_output=True, text=True, **kw)
 
+def _find_binary(name: str) -> str | None:
+    for p in (ROOT / "bin" / "ffmpeg" / "bin" / name,
+              ROOT / "bin" / "ffmpeg" / name):
+        if p.exists():
+            return str(p)
+    return shutil.which(name)
+
 @pytest.fixture(scope="session")
 def ffmpeg() -> str:
-    p = ROOT / "bin" / "ffmpeg" / "ffmpeg.exe"
-    if p.exists():
-        return str(p)
-    exe = shutil.which("ffmpeg")
+    exe = _find_binary("ffmpeg.exe")
     if not exe:
         pytest.skip("ffmpeg not available")
     return exe
 
 @pytest.fixture(scope="session")
 def ffprobe() -> str:
-    p = ROOT / "bin" / "ffmpeg" / "ffprobe.exe"
-    if p.exists():
-        return str(p)
-    exe = shutil.which("ffprobe")
+    exe = _find_binary("ffprobe.exe")
     if not exe:
         pytest.skip("ffprobe not available")
     return exe
