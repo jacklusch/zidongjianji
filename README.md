@@ -58,17 +58,28 @@ config.yaml       模型与参数配置
 
 ## 模型配置
 
-默认 `config.yaml` 中所有模型 `provider: none`，即完全离线规则兜底（BM25 检索、规则脚本解析、亮度直方图视觉分析）。如需启用本地模型，把对应项的 `provider: none` 改为 `local` 并填写模型名：
+`config.yaml` 的 `models` 段用 `provider` 三态控制各模型（llm/vlm/vlm_reranker/asr/embedding）的启用方式：
 
-```yaml
-models:
-  llm:       {provider: local, model: "Qwen/Qwen2.5-7B-Instruct", device: auto}   # 脚本解析
-  embedding: {provider: local, model: "BAAI/bge-small-zh-v1.5", device: auto}     # 向量检索
-  vlm:       {provider: local, model: "Qwen/Qwen2.5-VL-7B-Instruct", device: auto} # 视觉分析
-  whisper:   {provider: local, model: "openai/whisper-small", device: auto}        # 语音转写
-```
+- `none`（默认）→ 规则兜底，不加载任何模型，完全离线运行（BM25 检索、规则脚本解析、亮度直方图视觉分析）。
+- `local` → 本地模型。用 `scripts/download_models.py` 从 HuggingFace / ModelScope 下载后，以 `--write-config` 自动把本地路径写回 `config.yaml`：
 
-启用模型需自行额外安装 `transformers`、`torch` 等依赖，并确保模型可在本地加载。
+  ```powershell
+  venv\Scripts\python.exe scripts\download_models.py --list
+  venv\Scripts\python.exe scripts\download_models.py --source ms --write-config   # 国内网络可用 --source ms
+  ```
+
+- `openai` → 线上 OpenAI 兼容接口（仅 llm/vlm），需填 `base_url` 与 `api_key`。示例：
+
+  ```yaml
+  models:
+    llm: {provider: openai, model: "gpt-4o-mini", base_url: "https://api.openai.com/v1", api_key: ""}
+  ```
+
+  `api_key` 可直接写入 `config.yaml`，或留空走环境变量 `OPENAI_API_KEY`。
+
+本地模型（provider: local）需在 `requirements-models.txt` 中安装对应依赖（torch/transformers/llama-cpp-python/funasr 等）。
+
+注意：`config.yaml` 含个人配置（如 `api_key`），**不入库**（见 `.gitignore`）。参考模板见 `config.yaml.example`，安装脚本会基于模板生成 `config.yaml`。
 
 ## 测试
 

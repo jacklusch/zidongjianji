@@ -1,19 +1,12 @@
+# 模型配置：provider 可选 none|local|openai
+#   none    → 规则兜底（无模型，默认）
+#   local   → 本地模型（用 scripts/download_models.py 下载后 --write-config 自动填写路径）
+#   openai  → 线上 OpenAI 兼容接口（llm/vlm；需 base_url + api_key）
+# api_key 可直接写 llm.api_key，或留空走环境变量 OPENAI_API_KEY
 models:
-  vlm: {provider: none, model: "", device: auto}
-  vlm_reranker: {provider: none, model: "", device: auto}
-  embedding: {provider: none, model: "", device: auto}
-  whisper: {provider: none, model: "", device: auto}
-  llm: {provider: none, model: "", device: auto}
-video:
-  scene_threshold: 0.35
-  min_shot_duration: 1.0
-matching:
-  top_k: 20
-  rerank_k: 5
-index:
-  frames_min: 3
-  frames_max: 8
-render:
-  resolution: 1920x1080
-  fps: 30
-  format: mp4
+  llm:       {provider: none, model: "", device: auto, base_url: "https://api.openai.com/v1", api_key: ""}
+  vlm:       {provider: none, model: "", device: auto, base_url: "", api_key: ""}
+  vlm_reranker: {provider: none, model: "", device: auto, base_url: "", api_key: ""}
+  asr:       {provider: none, model: "", device: auto, base_url: "", api_key: ""}
+  embedding: {provider: none, model: "", device: auto, base_url: "", api_key: ""}
+# 其余配置段（video/matching/index/render）保持不变，见 config.yaml

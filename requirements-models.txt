@@ -1,4 +1,9 @@
 torch>=2.2
 transformers>=4.40
-faster-whisper>=1.0
 sentence-transformers>=3.0
+openai>=1.30
+huggingface_hub>=0.23
+modelscope>=1.15
+llama-cpp-python>=0.2.80
+funasr>=1.1.6
+onnxruntime>=1.17
