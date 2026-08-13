@@ -12,13 +12,26 @@ class FakeShot:
 
 def test_judge_consistency_consistent():
     online = type("V", (), {"describe": lambda self, frames, prompt: {"consistent": True, "diff": ""}})()
-    verdict = _judge_consistency(online, [None], "本地描述", "线上描述")
+    verdict = _judge_consistency(online, [None], "本地描述")
     assert verdict["consistent"] is True
     assert "本地描述" in verdict["prompt_used"]
 
 def test_judge_consistency_parse_failure_fallback():
     online = type("V", (), {"describe": lambda self, frames, prompt: {"consistent": False}})()
-    verdict = _judge_consistency(online, [None], "a", "b")
+    verdict = _judge_consistency(online, [None], "a")
+    assert verdict["consistent"] is False
+
+def test_judge_consistency_exception_is_unknown():
+    def boom(self, frames, prompt):
+        raise RuntimeError("限流")
+    online = type("V", (), {"describe": boom})()
+    verdict = _judge_consistency(online, [None], "本地描述")
+    assert verdict["consistent"] == "unknown"
+    assert "线上裁判失败" in verdict["diff"]
+
+def test_judge_consistency_string_false_is_not_truthy():
+    online = type("V", (), {"describe": lambda self, frames, prompt: {"consistent": "false"}})()
+    verdict = _judge_consistency(online, [None], "a")
     assert verdict["consistent"] is False
 
 def test_build_report_has_three_columns():
@@ -40,11 +53,8 @@ def test_compare_video_output_file(tmp_path, monkeypatch):
         ffmpeg = "ffmpeg"
         frames_min = 3
         frames_max = 8
-    # 用一个真实存在的视频文件（conftest 的 sample_video）
-    import shutil
-    from pathlib import Path
     v = Path(tmp_path) / "x.mp4"
-    v.write_bytes(b"fake")  # 占位，会被下面的 monkeypatch 拦截
+    v.write_bytes(b"fake")
     monkeypatch.setattr("app.analyzer.compare.detect_shots",
                         lambda *a, **k: [type("S", (), {"shot_id": "s1", "start": 0.0, "end": 4.0, "duration": 4.0})()])
     monkeypatch.setattr("app.analyzer.compare._subdivide", lambda shots, window: shots)

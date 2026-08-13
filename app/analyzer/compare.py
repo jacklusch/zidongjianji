@@ -1,5 +1,4 @@
 """本地 VLM 与线上 VLM 的画面对比（供人工校验本地描述）。"""
-import json
 from pathlib import Path
 from app.models.vlm import VLM
 from app.analyzer.scene import detect_shots, is_image
@@ -14,15 +13,19 @@ _COMPARE_PROMPT = (
 )
 
 
-def _judge_consistency(online_vlm, frames, local_desc, online_desc) -> dict:
-    """让线上 VLM 同时看图 + 本地描述，输出一致性判断。"""
+def _judge_consistency(online_vlm, frames, local_desc) -> dict:
+    """让线上 VLM 同时看图 + 本地描述，输出一致性判断。
+
+    consistent 为三态：True / False / "unknown"（线上裁判失败）。
+    """
     prompt = _COMPARE_PROMPT.format(local_desc=local_desc)
     try:
         data = online_vlm.describe(frames, prompt)
-        consistent = bool(data.get("consistent", False))
+        raw = data.get("consistent")
+        consistent = raw in (True, "true", "True", 1, "1")
         diff = str(data.get("diff", "") or "")
     except Exception:
-        consistent = False
+        consistent = "unknown"
         diff = "线上裁判失败（限流或解析错误）"
     return {"consistent": consistent, "diff": diff, "prompt_used": prompt}
 
@@ -37,7 +40,7 @@ def _build_report(video_name: str, rows: list[dict], n_consistent: int, n_total:
         "|---|---|---|---|---|",
     ]
     for r in rows:
-        c = "✅" if r["consistent"] else "❌"
+        c = {"unknown": "❔", True: "✅", False: "❌"}.get(r["consistent"], "❔")
         lines.append(
             f"| {_fmt_range(r['start'], r['end'])} | {r['local']} | {r['online']} | {c} | {r['diff']} |"
         )
@@ -68,7 +71,12 @@ def compare_video(settings, video_path, log=None, window: float = 5.0) -> Path:
     rows = []
     n_consistent = 0
     for shot in shots:
-        frames = _shot_frames(video_path, shot, settings, thumb_dir, shot.shot_id)
+        try:
+            frames = _shot_frames(video_path, shot, settings, thumb_dir, shot.shot_id)
+        except Exception as e:
+            if log:
+                log.warning(f"  [compare] {shot.shot_id} 抽帧失败: {e}")
+            continue
         local_desc = "-"
         online_desc = "-"
         try:
@@ -77,6 +85,10 @@ def compare_video(settings, video_path, log=None, window: float = 5.0) -> Path:
         except Exception as e:
             if log:
                 log.warning(f"  [compare] {shot.shot_id} 本地 VLM 失败: {e}")
+            try:
+                local_desc = fallback_visual_analysis(frames).description + "（本地降级）"
+            except Exception:
+                local_desc = "-"
         try:
             od = online_vlm.describe(frames, _VLM_PROMPT)
             online_desc = str(od.get("description", "") or "")
@@ -84,10 +96,10 @@ def compare_video(settings, video_path, log=None, window: float = 5.0) -> Path:
             if log:
                 log.warning(f"  [compare] {shot.shot_id} 线上 VLM 失败: {e}")
             online_desc = "（线上失败）"
-        verdict = {"consistent": False, "diff": ""}
+        verdict = {"consistent": "unknown", "diff": "裁判未执行（描述失败）"}
         if local_desc != "-" and online_desc != "（线上失败）":
-            verdict = _judge_consistency(online_vlm, frames, local_desc, online_desc)
-            if verdict["consistent"]:
+            verdict = _judge_consistency(online_vlm, frames, local_desc)
+            if verdict["consistent"] is True:
                 n_consistent += 1
         rows.append({"shot": shot.shot_id, "start": shot.start, "end": shot.end,
                      "local": local_desc, "online": online_desc,
