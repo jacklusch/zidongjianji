@@ -33,6 +33,7 @@ def build_corpus(settings) -> list[tuple[str, str]]:
         vecs = emb.embed(texts)
         if vecs:
             for sid, v in zip(ids, vecs):
-                db.upsert_embedding(sid, emb.model if emb.model else "local", len(v), v, "")
+                vec = [float(x) for x in v]
+                db.upsert_embedding(sid, emb.model if emb.model else "local", len(vec), vec, "")
     db.close()
     return rows

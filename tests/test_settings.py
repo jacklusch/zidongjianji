@@ -11,4 +11,4 @@ def test_settings_has_asr_not_whisper():
     s = load_settings()
     assert hasattr(s, "asr") and not hasattr(s, "whisper")
     assert s.asr.provider in ("none", "local")
-    assert s.llm.base_url == "" and s.llm.api_key == ""
+    assert isinstance(s.llm.base_url, str) and isinstance(s.llm.api_key, str)

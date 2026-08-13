@@ -13,6 +13,23 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+def _resolve_python() -> Path:
+    """返回项目 venv 的 python；不存在时回退当前解释器。"""
+    py = ROOT / "venv" / "Scripts" / "python.exe"
+    return py if py.exists() else Path(sys.executable)
+
+def _require_venv() -> None:
+    """若项目 venv 存在但当前不是用它运行，给出明确提示后退出。"""
+    venv_py = ROOT / "venv" / "Scripts" / "python.exe"
+    if venv_py.exists() and Path(sys.executable).resolve() != venv_py.resolve():
+        print(
+            "错误：请用项目虚拟环境运行本脚本：\n"
+            f"    {venv_py} scripts\\download_models.py ...\n"
+            f"当前解释器：{sys.executable}（依赖未安装，无法下载）",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
 MODELS = {
     "vlm": {
         "hf": "Qwen/Qwen3-VL-2B-Instruct-GGUF",
@@ -75,9 +92,7 @@ def _ensure_deps():
     req = ROOT / "requirements-models.txt"
     if not req.exists():
         return
-    py = ROOT / "venv" / "Scripts" / "python.exe"
-    if not py.exists():
-        py = sys.executable
+    py = _resolve_python()
     import subprocess
     subprocess.run([str(py), "-m", "pip", "install", "-r", str(req)], check=False)
 
@@ -119,6 +134,7 @@ def main(argv=None):
         for role, m in MODELS.items():
             print(f"{role:12s} hf={m['hf']}\n{'':12s} ms={m['ms']}\n{'':12s} {m['note']}")
         return 0
+    _require_venv()
     report = download_all(ROOT, sources=args.source, models=args.model,
                           install=not args.skip_install)
     if args.write_config:
