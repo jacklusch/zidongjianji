@@ -14,6 +14,9 @@ def _setup(tmp_path, sample_video, ffmpeg, ffprobe, monkeypatch):
     monkeypatch.setattr(settings, "footage_dir", tmp_path / "data" / "footage")
     monkeypatch.setattr(settings, "ffmpeg", ffmpeg)
     monkeypatch.setattr(settings, "ffprobe", ffprobe)
+    monkeypatch.setattr(settings, "vlm", type("MC", (), {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""})())
+    monkeypatch.setattr(settings, "embedding", type("MC", (), {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""})())
+    monkeypatch.setattr(settings, "asr", type("MC", (), {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""})())
     return settings
 
 SEG = ScriptSegment(id=1, script_text="视频镜头", visual_requirements=["镜头"], duration=4.0)

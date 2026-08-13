@@ -14,6 +14,9 @@ def test_build_end_to_end(tmp_path, sample_video, ffmpeg, ffprobe, monkeypatch):
     monkeypatch.setattr(settings, "output_dir", tmp_path / "data" / "output")
     monkeypatch.setattr(settings, "ffmpeg", ffmpeg)
     monkeypatch.setattr(settings, "ffprobe", ffprobe)
+    monkeypatch.setattr(settings, "vlm", type("MC", (), {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""})())
+    monkeypatch.setattr(settings, "embedding", type("MC", (), {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""})())
+    monkeypatch.setattr(settings, "asr", type("MC", (), {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""})())
     script = tmp_path / "demo.md"
     script.write_text("开头展示 视频镜头。\n然后展示 画面亮度。\n", encoding="utf-8")
     run_index(settings, analyze=True)

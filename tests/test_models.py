@@ -13,6 +13,12 @@ def test_vlm_repair_json_fixes_braces():
     bad = '{"a": 1, "b": [2, 3'
     assert "b" in vlm_repair_json(bad)
 
+def test_parse_vlm_json_tolerates_trailing_text():
+    from app.models.vlm import parse_vlm_json
+    raw = '好的，这是分析结果：{"a": 1, "b": [2, 3]} 以上是描述。'
+    data = parse_vlm_json(raw)
+    assert data["a"] == 1 and data["b"] == [2, 3]
+
 def test_llm_none_generates():
     llm = LLM(provider="none", model="", device="cpu")
     text = llm.generate("讲个工厂故事")

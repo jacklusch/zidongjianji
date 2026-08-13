@@ -15,11 +15,47 @@ def vlm_repair_json(raw: str) -> str:
     s += "}" * max(0, open_cnt - close_cnt)
     return s
 
+
+def _extract_json_object(raw: str) -> str:
+    """提取第一个最外层完整的 JSON 对象（容忍前后附加文本）。"""
+    start = raw.find("{")
+    if start == -1:
+        return raw
+    depth = 0
+    in_str = False
+    esc = False
+    for i in range(start, len(raw)):
+        ch = raw[i]
+        if esc:
+            esc = False
+            continue
+        if ch == "\\":
+            esc = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch in "{[":
+            depth += 1
+        elif ch in "}]":
+            depth -= 1
+            if depth == 0:
+                return raw[start:i + 1]
+    return raw[start:]
+
+
 def parse_vlm_json(raw: str) -> dict:
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return json.loads(vlm_repair_json(raw))
+    if isinstance(raw, str):
+        attempts = [raw, vlm_repair_json(raw), _extract_json_object(raw)]
+        for candidate in attempts:
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+        raise ValueError(f"VLM 输出无法解析为 JSON: {raw[:200]}")
+    return raw
 
 def _find_mmproj(directory: Path):
     files = sorted(directory.glob("mmproj-*.gguf"))

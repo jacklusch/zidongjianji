@@ -2,8 +2,22 @@ from app.index.database import Database
 from app.index.footage_index import discover, needs_reindex, index_one
 from app.analyzer.scene import is_image
 from app.analyzer.frames import sample_times, extract_frame
-from app.analyzer.visual import fallback_visual_analysis
+from app.analyzer.visual import fallback_visual_analysis, vlm_visual_analysis
+from app.models.vlm import VLM
 from app.analyzer.audio import transcribe
+
+_VLM_CACHE = {}
+
+
+def _get_vlm(settings):
+    """构建（并缓存）VLM 适配器；未启用返回 None。"""
+    cfg = settings.vlm
+    if cfg.provider not in ("local", "openai"):
+        return None
+    key = (cfg.provider, cfg.model, cfg.device, cfg.base_url, cfg.api_key)
+    if key not in _VLM_CACHE:
+        _VLM_CACHE[key] = VLM(cfg.provider, cfg.model, cfg.device, cfg.base_url, cfg.api_key)
+    return _VLM_CACHE[key]
 
 def run_index(settings, analyze=True, force_analyze=False, log=None) -> dict:
     """扫描 → 入库 →（可选）切分帧分析 + ASR 转写。返回报告。"""
@@ -63,6 +77,7 @@ def _analyze_shot(settings, db, rel, info, log, report):
     shots = db.get_shots_by_media(m["id"])
     thumb = settings.thumbnails_dir
     thumb.mkdir(parents=True, exist_ok=True)
+    vlm = _get_vlm(settings)
     for sh in shots:
         frames = []
         times = sample_times(sh["start"], sh["end"], settings.frames_min, settings.frames_max)
@@ -70,7 +85,14 @@ def _analyze_shot(settings, db, rel, info, log, report):
             f = extract_frame(str(info.path), t, settings.ffmpeg, thumb / f"{sh['shot_id']}_{i:02d}.jpg")
             if f is not None:
                 frames.append(f)
-        va = fallback_visual_analysis(frames)
+        if vlm is not None:
+            try:
+                va = vlm_visual_analysis(frames, vlm)
+            except Exception as e:
+                log.warning(f"  [index] {rel} VLM 分析失败，降级兜底: {e}")
+                va = fallback_visual_analysis(frames)
+        else:
+            va = fallback_visual_analysis(frames)
         db.upsert_visual(sh["shot_id"], va.description, va.objects, va.actions,
                          va.environment, va.shot_type, va.camera_motion,
                          va.people_count, va.visual_quality, "{}")
