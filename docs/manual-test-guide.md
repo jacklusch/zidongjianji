@@ -322,13 +322,19 @@ venv\Scripts\python.exe -m app.main index materials
 venv\Scripts\python.exe -c "from app.index.database import Database; from app.config.settings import load_settings; s=load_settings(); db=Database(s.footage_db); print('embedding rows:', len(db.get_all_embeddings())); db.close()"
 ```
 
-### 4.2 带 asr 的转写
+### 4.2 带 asr 的转写（含时间戳）
 
 ```powershell
 venv\Scripts\python.exe -m app.main analyze materials
 ```
 
-**预期**：日志出现 ASR 转写；transcripts 表有记录（素材需含人声，纯音效/静音素材转写结果可能为空段）。
+**预期**：日志出现 ASR 转写；transcripts 表有逐字时间戳记录（如 `[0.39-0.65] hello`、`[0.65-0.81] 你`）。验证：
+
+```powershell
+venv\Scripts\python.exe -c "from app.index.database import Database; from app.config.settings import load_settings; db=Database(load_settings().footage_db); [print(r) for r in db.conn.execute('SELECT shot_id, round(start,2), round(end,2), text FROM transcripts LIMIT 5')]; db.close()"
+```
+
+> asr 模型用带 VAD/标点的 paraformer（`models/asr_vad`）才能输出逐字时间戳；纯 asr 模型无时间戳（start/end=0）。
 
 ### 4.3 带 vlm 的视觉分析
 

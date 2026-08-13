@@ -15,7 +15,7 @@
 | 角色 | 模型 | HF ID | ModelScope ID | 备注 |
 |---|---|---|---|---|
 | VLM + reranker | Qwen3-VL-2B-Instruct-GGUF | `Qwen/Qwen3-VL-2B-Instruct-GGUF` | `Qwen/Qwen3-VL-2B-Instruct-GGUF` | GGUF 量化 |
-| ASR | paraformer-zh | `funasr/paraformer-zh` | `iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch` | 中文优先 |
+| ASR | paraformer-zh (VAD+punc) | `iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch` | 同左 | 中文优先，输出逐字时间戳 |
 | Embedding | bge-small-zh-v1.5 | `BAAI/bge-small-zh-v1.5` | `AI-ModelScope/bge-small-zh-v1.5` | 中文优化 |
 
 下载到 `models/<role>/`（仓库根 `models/`，已被 `.gitignore` 排除）。
