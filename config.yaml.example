@@ -7,6 +7,8 @@ models:
   llm:       {provider: none, model: "", device: auto, base_url: "https://api.openai.com/v1", api_key: ""}
   vlm:       {provider: none, model: "", device: auto, base_url: "", api_key: ""}
   vlm_reranker: {provider: none, model: "", device: auto, base_url: "", api_key: ""}
+  # vlm_compare: 线上视觉模型，用于本地/线上画面对比
+  vlm_compare: {provider: openai, model: glm-4v-flash, device: auto, base_url: "https://open.bigmodel.cn/api/paas/v4", api_key: ""}
   asr:       {provider: none, model: "", device: auto, base_url: "", api_key: ""}
   embedding: {provider: none, model: "", device: auto, base_url: "", api_key: ""}
 # 其余配置段（video/matching/index/render）保持不变，见 README 或由 scripts/install.ps1 生成
