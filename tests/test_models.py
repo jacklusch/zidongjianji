@@ -3,6 +3,7 @@ from app.models.base import ModelProvider
 from app.models.llm import LLM
 from app.models.vlm import vlm_repair_json
 from app.models.embedding import Embedder
+from app.models.vlm import VLM
 
 def test_device_resolve():
     d = DeviceManager("auto")
@@ -24,6 +25,15 @@ def test_embedder_none_returns_none():
 def test_provider_openai_available():
     p = ModelProvider(provider="openai", model="m", device="cpu", base_url="u", api_key="k")
     assert p.available() is True
+
+def test_vlm_none_raises():
+    v = VLM(provider="none", model="", device="cpu")
+    try:
+        v.describe([], "描述")
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("provider=none 应抛 RuntimeError")
 
 def test_llm_openai_calls_client(monkeypatch):
     llm = LLM(provider="openai", model="gpt-4o-mini", device="cpu", base_url="https://api.x.com/v1", api_key="sk-test")
