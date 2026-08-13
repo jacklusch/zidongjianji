@@ -4,11 +4,11 @@ import yaml
 from app.utils.paths import project_root
 
 _DEFAULTS = {
-    "models": {"vlm": {"provider": "none", "model": "", "device": "auto"},
-               "vlm_reranker": {"provider": "none", "model": "", "device": "auto"},
-               "embedding": {"provider": "none", "model": "", "device": "auto"},
-               "whisper": {"provider": "none", "model": "", "device": "auto"},
-               "llm": {"provider": "none", "model": "", "device": "auto"}},
+    "models": {"vlm": {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""},
+               "vlm_reranker": {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""},
+               "embedding": {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""},
+               "asr": {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""},
+               "llm": {"provider": "none", "model": "", "device": "auto", "base_url": "", "api_key": ""}},
     "video": {"scene_threshold": 0.35, "min_shot_duration": 1.0},
     "matching": {"top_k": 20, "rerank_k": 5},
     "index": {"frames_min": 3, "frames_max": 8},
@@ -20,6 +20,8 @@ class ModelConfig:
     provider: str = "none"
     model: str = ""
     device: str = "auto"
+    base_url: str = ""
+    api_key: str = ""
 
 @dataclass
 class Settings:
@@ -37,7 +39,7 @@ class Settings:
     vlm: ModelConfig = field(default_factory=ModelConfig)
     vlm_reranker: ModelConfig = field(default_factory=ModelConfig)
     embedding: ModelConfig = field(default_factory=ModelConfig)
-    whisper: ModelConfig = field(default_factory=ModelConfig)
+    asr: ModelConfig = field(default_factory=ModelConfig)
     llm: ModelConfig = field(default_factory=ModelConfig)
     scene_threshold: float = 0.35
     min_shot_duration: float = 1.0
@@ -94,7 +96,7 @@ def load_settings(config_path: Path | None = None) -> Settings:
         vlm=ModelConfig(**merge["models"]["vlm"]),
         vlm_reranker=ModelConfig(**merge["models"]["vlm_reranker"]),
         embedding=ModelConfig(**merge["models"]["embedding"]),
-        whisper=ModelConfig(**merge["models"]["whisper"]),
+        asr=ModelConfig(**merge["models"]["asr"]),
         llm=ModelConfig(**merge["models"]["llm"]),
         scene_threshold=float(merge["video"]["scene_threshold"]),
         min_shot_duration=float(merge["video"]["min_shot_duration"]),

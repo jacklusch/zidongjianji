@@ -4,6 +4,7 @@ materials/
 data/
 output/
 /models/
+config.yaml
 __pycache__/
 *.pyc
 .pytest_cache/

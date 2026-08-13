@@ -1,9 +1,10 @@
 import subprocess
-from app.models.whisper import Whisper
+from app.models.asr import ASR
 
 def transcribe(settings, video_path: str, start: float, end: float, max_dur: float = 30.0) -> list[dict]:
-    """截取 [start,end] 音频段后调用 Whisper（provider=none 时返回 []）。"""
-    w = Whisper(settings.whisper.provider, settings.whisper.model, settings.whisper.device)
+    """截取 [start,end] 音频段后调用 ASR（provider=none 时返回 []）。"""
+    w = ASR(settings.asr.provider, settings.asr.model, settings.asr.device,
+            base_url=settings.asr.base_url, api_key=settings.asr.api_key)
     if not w.available():
         return []
     tmp = settings.transcripts_dir / "tmp.wav"
