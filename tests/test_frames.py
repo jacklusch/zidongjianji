@@ -85,3 +85,21 @@ def test_vlm_visual_analysis_single_frame_failure_skips():
     va = vlm_visual_analysis([object(), object()], FakeVLM())
     assert "ok" in va.description
     assert calls["n"] == 2
+
+
+def test_vlm_visual_analysis_bad_people_count_skips():
+    from app.analyzer.visual import vlm_visual_analysis
+    results = iter([
+        {"description": "帧一", "objects": [], "actions": [],
+         "environment": "", "shot_type": "medium", "camera_motion": "static",
+         "people_count": "约3人", "visual_quality": 0.5},
+        {"description": "帧二", "objects": [], "actions": [],
+         "environment": "", "shot_type": "medium", "camera_motion": "static",
+         "people_count": 2, "visual_quality": 0.5},
+    ])
+    class FakeVLM:
+        def describe(self, frames, prompt):
+            return next(results)
+    va = vlm_visual_analysis([object(), object()], FakeVLM())
+    assert va.people_count == 2
+    assert "帧一" in va.description and "帧二" in va.description

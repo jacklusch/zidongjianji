@@ -95,7 +95,10 @@ def vlm_visual_analysis(frames, vlm) -> VisualAnalysis:
         desc = str(d.get("description", "") or "")
         if desc and desc not in descriptions:
             descriptions.append(desc)
-        people = max(people, int(d.get("people_count", 0) or 0))
+        try:
+            people = max(people, int(d.get("people_count", 0) or 0))
+        except (TypeError, ValueError):
+            pass
         try:
             q_sum += float(d.get("visual_quality", 0.5) or 0.5)
         except (TypeError, ValueError):
