@@ -214,7 +214,15 @@ venv\Scripts\python.exe -m app.main index materials
 venv\Scripts\python.exe -m app.main analyze materials
 ```
 
-**预期**：`reanalyzed` 等于素材数（对已索引素材重跑视觉/语音分析）。
+**预期**：`reanalyzed` 等于素材数（对已索引素材重跑视觉/语音分析）；结束后自动生成视觉校验报告 `data\footage\visual_review.md`。
+
+### 3.5 export —— 导出视觉描述校验报告
+
+```powershell
+venv\Scripts\python.exe -m app.main export
+```
+
+**预期**：从索引库重新生成 `data\footage\visual_review.md`（Markdown 表格，每镜头一行：素材、时间码、时长、描述、对象、动作、环境、场景类型、机位、人数、质量、缩略图文件名），方便人类逐镜头核对画面描述是否准确。
 
 ### 3.5 search —— 语义搜索
 

@@ -29,12 +29,19 @@ def cmd_index(args):
 
 def cmd_analyze(args):
     from app.pipeline.index_pipeline import run_index
+    from app.index.review_export import export_visual_review
     settings = load_settings()
     settings.materials_dir = Path(args.directory)
     settings.ffmpeg, settings.ffprobe = find_ffmpeg(settings)
     log = setup_logging(settings.logs_dir, "analyze")
     rep = run_index(settings, analyze=True, force_analyze=True, log=log)
     log.info(f"analyze 完成: {rep}")
+    try:
+        review = export_visual_review(settings)
+        log.info(f"视觉校验报告已生成: {review}")
+        print(f"视觉校验报告: {review}")
+    except Exception as e:
+        log.warning(f"生成视觉校验报告失败: {e}")
     print(json.dumps(rep, ensure_ascii=False, indent=2))
 
 def cmd_search(args):
@@ -49,6 +56,12 @@ def cmd_search(args):
         print(f"{score:6.3f} {sid:30s} {sh.get('source', '')} [{sh.get('start', 0)}-{sh.get('end', 0)}]")
     db.close()
     print(f"共 {len(hits)} 个结果")
+
+def cmd_export(args):
+    from app.index.review_export import export_visual_review
+    settings = load_settings()
+    review = export_visual_review(settings)
+    print(f"视觉校验报告: {review}")
 
 def cmd_plan(args):
     from pathlib import Path
@@ -106,6 +119,8 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("search", help="语义搜索素材")
     s.add_argument("query")
     s.set_defaults(func=cmd_search)
+    s = sub.add_parser("export", help="导出镜头视觉描述校验报告 (Markdown)")
+    s.set_defaults(func=cmd_export)
     s = sub.add_parser("plan", help="脚本→检索→匹配→edit_plan")
     s.add_argument("script")
     s.add_argument("--project", default="demo")
