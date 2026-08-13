@@ -32,9 +32,14 @@ def _require_venv() -> None:
 
 MODELS = {
     "vlm": {
+        "hf": "Qwen/Qwen3-VL-4B-Instruct-GGUF",
+        "ms": "Qwen/Qwen3-VL-4B-Instruct-GGUF",
+        "note": "VLM 描述 + reranker（GGUF Q4_K_M，4B 更准）",
+    },
+    "vlm2b": {
         "hf": "Qwen/Qwen3-VL-2B-Instruct-GGUF",
         "ms": "Qwen/Qwen3-VL-2B-Instruct-GGUF",
-        "note": "VLM 描述 + reranker（GGUF）",
+        "note": "VLM 备用（2B 轻量）",
     },
     "asr": {
         "hf": "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",

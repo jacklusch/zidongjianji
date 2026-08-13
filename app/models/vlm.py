@@ -57,9 +57,17 @@ def parse_vlm_json(raw: str) -> dict:
         raise ValueError(f"VLM 输出无法解析为 JSON: {raw[:200]}")
     return raw
 
-def _find_mmproj(directory: Path):
+def _find_mmproj(directory: Path, main_name: str = ""):
     files = sorted(directory.glob("mmproj-*.gguf"))
-    return files[0] if files else None
+    if not files:
+        return None
+    if main_name:
+        stem = main_name.rsplit(".", 1)[0]  # 如 Qwen3VL-4B-Instruct-Q4_K_M
+        base = stem.split("-Q4_")[0] if "-Q4_" in stem else stem  # Qwen3VL-4B-Instruct
+        for f in files:
+            if base and base in f.name:
+                return f
+    return files[0]
 
 def _resolve_gguf_paths(model_path: str):
     """把 model_path（.gguf 文件或目录）解析为 (主模型文件, mmproj 或 None)。"""
@@ -67,7 +75,7 @@ def _resolve_gguf_paths(model_path: str):
     if not p.exists():
         raise RuntimeError(f"模型不存在: {model_path}")
     if p.is_file():
-        return p, _find_mmproj(p.parent)
+        return p, _find_mmproj(p.parent, p.name)
     files = sorted(p.glob("*.gguf"))
     if not files:
         raise RuntimeError(f"目录中未找到 .gguf 文件: {model_path}")
@@ -79,7 +87,7 @@ def _resolve_gguf_paths(model_path: str):
         name = f.name.lower()
         return (0 if "q4" in name else 1, -f.stat().st_size)
     main = sorted(mains, key=rank)[0]
-    return main, (mmproj[0] if mmproj else None)
+    return main, _find_mmproj(p, main.name) if mmproj else (main, None)
 
 def get_gguf_llm(model_path: str, device: str = "auto"):
     """模块级单例：同一 GGUF 只加载一次（VLM 与 reranker 复用）。

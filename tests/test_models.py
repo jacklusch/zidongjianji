@@ -81,6 +81,14 @@ def test_resolve_gguf_paths_directory_prefers_q4_and_excludes_mmproj(tmp_path):
     assert main.name == "model-mix-Q4_K_M.gguf"
     assert mm is not None and mm.name == "mmproj-model-f16.gguf"
 
+def test_resolve_gguf_paths_prefers_matching_mmproj(tmp_path):
+    (tmp_path / "Qwen3VL-4B-Instruct-Q4_K_M.gguf").write_bytes(b"b" * 10)
+    (tmp_path / "mmproj-Qwen3VL-2B-Instruct-F16.gguf").write_bytes(b"2")
+    (tmp_path / "mmproj-Qwen3VL-4B-Instruct-F16.gguf").write_bytes(b"4")
+    main, mm = _resolve_gguf_paths(str(tmp_path))
+    assert main.name == "Qwen3VL-4B-Instruct-Q4_K_M.gguf"
+    assert mm is not None and "4B" in mm.name
+
 def test_resolve_gguf_paths_single_file_uses_it(tmp_path):
     (tmp_path / "x.gguf").write_bytes(b"x")
     main, mm = _resolve_gguf_paths(str(tmp_path / "x.gguf"))

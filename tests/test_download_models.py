@@ -5,7 +5,7 @@ import yaml
 from scripts.download_models import MODELS, source_id, resolve_target, download_all, write_config
 
 def test_model_list_complete():
-    assert set(MODELS.keys()) == {"vlm", "asr", "embedding"}
+    assert set(MODELS.keys()) == {"vlm", "vlm2b", "asr", "embedding"}
     assert MODELS["embedding"]["hf"] == "BAAI/bge-small-zh-v1.5"
     assert MODELS["embedding"]["ms"] == "AI-ModelScope/bge-small-zh-v1.5"
 
