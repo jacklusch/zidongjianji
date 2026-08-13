@@ -55,9 +55,58 @@ def test_vlm_openai_missing_key_raises(monkeypatch):
     else:
         raise AssertionError("openai provider 缺 api_key 应抛 RuntimeError")
 
+def test_vlm_local_deterministic_params(monkeypatch, tmp_path):
+    import sys, types
+    (tmp_path / "x.gguf").write_bytes(b"x")
+    calls = {}
+    class FakeLlama:
+        def __init__(self, **kw):
+            pass
+        def __call__(self, prompt, **kw):
+            calls["call"] = (prompt, kw)
+            return {"choices": [{"text": '{"description": "x", "objects": [], "actions": [], "environment": "", "shot_type": "medium", "camera_motion": "static", "people_count": 0}'}]}
+        def create_chat_completion(self, **kw):
+            calls["chat"] = kw
+            return {"choices": [{"message": {"content": '{"description": "x", "objects": [], "actions": [], "environment": "", "shot_type": "medium", "camera_motion": "static", "people_count": 0}'}}]}
+    monkeypatch.setitem(sys.modules, "llama_cpp", types.SimpleNamespace(Llama=FakeLlama))
+    from app.models.vlm import VLM
+    v = VLM("local", str(tmp_path / "x.gguf"), "cpu")
+    # 无 frames → 走 llm(prompt) 文本路径
+    v.describe([], "分析")
+    assert calls["call"] is not None  # 文本路径被调用
+    assert calls["call"][1].get("temperature") == 0.0  # 确定性核心：零温度
+    assert calls["call"][1].get("top_p") == 1.0
+    assert calls["call"][1].get("max_tokens") == 700
+
+def test_vlm_local_multimodal_deterministic_params(monkeypatch, tmp_path):
+    import sys, types
+    (tmp_path / "x.gguf").write_bytes(b"x")
+    (tmp_path / "mmproj-x-f16.gguf").write_bytes(b"m")
+    calls = {}
+    class FakeLlama:
+        def __init__(self, **kw):
+            pass
+        def __call__(self, prompt, **kw):
+            calls["call"] = (prompt, kw)
+            return {"choices": [{"text": '{"description": "x", "objects": [], "actions": [], "environment": "", "shot_type": "medium", "camera_motion": "static", "people_count": 0}'}]}
+        def create_chat_completion(self, **kw):
+            calls["chat"] = kw
+            return {"choices": [{"message": {"content": '{"description": "x", "objects": [], "actions": [], "environment": "", "shot_type": "medium", "camera_motion": "static", "people_count": 0}'}}]}
+    monkeypatch.setitem(sys.modules, "llama_cpp", types.SimpleNamespace(Llama=FakeLlama))
+    import numpy as np
+    frame = np.zeros((8, 8, 3), dtype=np.uint8)
+    from app.models.vlm import VLM
+    v = VLM("local", str(tmp_path / "x.gguf"), "cpu")
+    # 有 frames 且有 mmproj → 走 create_chat_completion 多模态路径
+    v.describe([frame], "分析")
+    assert calls["chat"] is not None  # 多模态路径被调用
+    assert calls["chat"].get("temperature") == 0.0
+    assert calls["chat"].get("top_p") == 1.0
+    assert calls["chat"].get("max_tokens") == 700
+
 def test_vlm_local_text_completion(monkeypatch):
     class FakeLLM:
-        def __call__(self, prompt):
+        def __call__(self, prompt, **kw):
             return {"choices": [{"text": '{"a": 1}'}]}
     monkeypatch.setattr("app.models.vlm.get_gguf_llm",
                         lambda model_path, device: (FakeLLM(), None))
@@ -66,7 +115,7 @@ def test_vlm_local_text_completion(monkeypatch):
 
 def test_vlm_local_frames_without_mmproj_falls_back_to_text(monkeypatch):
     class FakeLLM:
-        def __call__(self, prompt):
+        def __call__(self, prompt, **kw):
             return {"choices": [{"text": '{"ok": true}'}]}
     monkeypatch.setattr("app.models.vlm.get_gguf_llm",
                         lambda model_path, device: (FakeLLM(), None))
