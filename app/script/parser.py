@@ -38,9 +38,16 @@ def llm_parse(text: str, llm, default_duration: float = 4.0) -> list[ScriptSegme
         m = re.search(r"\[[\s\S]*\]", raw)
         data = json.loads(m.group(0)) if m else []
     return [ScriptSegment(id=i + 1, script_text=str(d.get("script_text", "")),
-                          visual_requirements=d.get("visual_requirements", []),
-                          duration=float(d.get("duration", default_duration)))
+                          visual_requirements=d.get("visual_requirements") or [],
+                          duration=_safe_duration(d.get("duration"), default_duration))
             for i, d in enumerate(data)]
+
+def _safe_duration(value, default: float) -> float:
+    try:
+        f = float(value)
+        return f if f > 0 else default
+    except (TypeError, ValueError):
+        return default
 
 def parse_script(text: str, llm=None, default_duration: float = 4.0) -> list[ScriptSegment]:
     if text is None or not text.strip():

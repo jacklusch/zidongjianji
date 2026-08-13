@@ -24,3 +24,24 @@ def test_rule_parse_removes_connectors():
 
 def test_parse_empty():
     assert parse_script("") == []
+
+def test_llm_parse_tolerates_null_fields():
+    from app.script.parser import llm_parse
+    import json
+    class FakeLLM:
+        def __init__(self, raw):
+            self._raw = raw
+        def available(self):
+            return True
+        def generate(self, prompt):
+            return self._raw
+    llm = FakeLLM(json.dumps([
+        {"id": 1, "script_text": "a", "visual_requirements": None, "duration": None},
+        {"id": 2, "script_text": "b", "visual_requirements": ["x"], "duration": "bad"},
+        {"id": 3, "script_text": "c", "visual_requirements": ["y"], "duration": 3.5},
+    ]))
+    segs = llm_parse("脚本", llm)
+    assert len(segs) == 3
+    assert segs[0].duration == 4.0 and segs[0].visual_requirements == []
+    assert segs[1].duration == 4.0
+    assert segs[2].duration == 3.5
