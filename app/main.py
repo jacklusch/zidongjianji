@@ -63,6 +63,16 @@ def cmd_export(args):
     review = export_visual_review(settings)
     print(f"视觉校验报告: {review}")
 
+def cmd_describe(args):
+    from pathlib import Path
+    from app.analyzer.describe import describe_video
+    settings = load_settings()
+    settings.ffmpeg, settings.ffprobe = find_ffmpeg(settings)
+    log = setup_logging(settings.logs_dir, "describe")
+    out = describe_video(settings, Path(args.video), log=log)
+    print(f"视频内容描述: {out}")
+    print(out.read_text(encoding="utf-8"))
+
 def cmd_plan(args):
     from pathlib import Path
     from app.pipeline.matching_pipeline import run_plan
@@ -121,6 +131,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_search)
     s = sub.add_parser("export", help="导出镜头视觉描述校验报告 (Markdown)")
     s.set_defaults(func=cmd_export)
+    s = sub.add_parser("describe", help="完整描述单个视频内容（时间线+概述+汇总）")
+    s.add_argument("video")
+    s.set_defaults(func=cmd_describe)
     s = sub.add_parser("plan", help="脚本→检索→匹配→edit_plan")
     s.add_argument("script")
     s.add_argument("--project", default="demo")

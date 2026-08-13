@@ -224,7 +224,18 @@ venv\Scripts\python.exe -m app.main export
 
 **预期**：从索引库重新生成 `data\footage\visual_review.md`（Markdown 表格，每镜头一行：素材、时间码、时长、描述、对象、动作、环境、场景类型、机位、人数、质量、缩略图文件名），方便人类逐镜头核对画面描述是否准确。
 
-### 3.5 search —— 语义搜索
+### 3.6 describe —— 完整描述单个视频内容
+
+```powershell
+venv\Scripts\python.exe -m app.main describe materials\factory01.mp4
+```
+
+**预期**：直接分析该视频（无需先索引），生成 `data\descriptions\factory01.md`，包含三部分：
+- **整体概述**：一句话总结视频内容
+- **分镜头时间线**：每镜头的时间范围 + VLM 画面描述 + 对象/动作/环境
+- **内容汇总**：出现的对象/动作/环境去重列表、最大人数、镜头数、总时长
+
+### 3.7 search —— 语义搜索
 
 ```powershell
 venv\Scripts\python.exe -m app.main search 香肠
@@ -233,7 +244,7 @@ venv\Scripts\python.exe -m app.main search 工厂
 
 **预期**：返回按相关度排序的候选镜头（shot_id、相似度、来源、时间码）。中文查询依赖素材文件名/描述词命中；若 corpus 词与查询无交集则结果为空属正常。
 
-### 3.6 plan —— 生成剪辑计划
+### 3.8 plan —— 生成剪辑计划
 
 准备脚本文件（例如 `scripts\demo.md`）：
 
@@ -252,7 +263,7 @@ venv\Scripts\python.exe -m app.main plan scripts\demo.md --project demo
 
 **预期**：生成 `data\projects\demo\script_plan.json`、`match_results.json`、`edit_plan.json`。`edit_plan.json` 的 timeline 项含 `script_id/source/in/out/duration/reason/confidence`；无匹配的片段进 `missing`。
 
-### 3.7 render —— 渲染成片
+### 3.9 render —— 渲染成片
 
 ```powershell
 venv\Scripts\python.exe -m app.main render data\projects\demo\edit_plan.json
@@ -260,7 +271,7 @@ venv\Scripts\python.exe -m app.main render data\projects\demo\edit_plan.json
 
 **预期**：生成 `data\projects\demo\preview.mp4` 与 `final.mp4`，大小 > 0。
 
-### 3.8 build —— 一键全流程
+### 3.10 build —— 一键全流程
 
 ```powershell
 venv\Scripts\python.exe -m app.main build scripts\demo.md --project demo
@@ -281,7 +292,7 @@ venv\Scripts\python.exe -m app.main build scripts\demo.md --project demo
 >   （两行分别命中 corpus 的 `视频镜头` 与 `画面亮度`，timeline 非空即可渲染）
 > - 启用 embedding（provider=local）后仍以 BM25 检索为主，中文长句匹配受限，这是已知限制（后续可引入中文分词改善）
 
-### 3.9 校验成片
+### 3.11 校验成片
 
 ```powershell
 bin\ffmpeg\bin\ffprobe.exe -v error -show_entries format=duration,size -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1 data\projects\demo\final.mp4
@@ -364,5 +375,5 @@ venv\Scripts\python.exe -m pytest tests/ -v
 | 下载 404 | 源上 repo 不存在 | 换 `--source ms`/`--source hf`；核对 `download_models.py --list` 的 ID |
 | `No module named 'torchaudio'` | 缺 FunASR 音频依赖 | `pip install -r requirements-models.txt` |
 | FunASR 很慢 | CPU 推理 | 设 `asr.device: auto` 用 GPU |
-| 搜索无结果 | BM25 需 token 精确命中 | 用与素材文件名/描述一致的短词（中文不分词）；见 3.8 说明 |
+| 搜索无结果 | BM25 需 token 精确命中 | 用与素材文件名/描述一致的短词（中文不分词）；见 3.10 说明 |
 | build 渲染失败 | 单片段失败 | 查看日志，`edit_plan.json` 的 missing/warnings |
