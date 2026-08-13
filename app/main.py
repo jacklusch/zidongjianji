@@ -50,6 +50,16 @@ def cmd_search(args):
     db.close()
     print(f"共 {len(hits)} 个结果")
 
+def cmd_plan(args):
+    from pathlib import Path
+    from app.pipeline.matching_pipeline import run_plan
+    from app.utils.process import find_ffmpeg
+    settings = load_settings()
+    settings.ffmpeg, settings.ffprobe = find_ffmpeg(settings)
+    log = setup_logging(settings.logs_dir, "plan")
+    out = run_plan(settings, Path(args.script), project=args.project, log=log)
+    print(f"edit_plan: {out}")
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="app.main", description="本地 AI 视频剪辑系统")
     sub = p.add_subparsers(dest="command", required=True)
@@ -65,6 +75,10 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("search", help="语义搜索素材")
     s.add_argument("query")
     s.set_defaults(func=cmd_search)
+    s = sub.add_parser("plan", help="脚本→检索→匹配→edit_plan")
+    s.add_argument("script")
+    s.add_argument("--project", default="demo")
+    s.set_defaults(func=cmd_plan)
     return p
 
 def main(argv=None):
