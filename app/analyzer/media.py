@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from app.editors.ffmpeg import ffprobe_json, MissingMediaError
 
+SUPPORTED = {".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v", ".jpg", ".jpeg", ".png", ".webp"}
+
 @dataclass
 class MediaInfo:
     path: Path
@@ -31,3 +33,13 @@ def probe_media(path, ffprobe: str = "ffprobe") -> MediaInfo:
         fps=fps, codec=v.get("codec_name", ""), audio=a is not None,
         size=p.stat().st_size,
     )
+
+def scan_directory(directory, ffprobe: str = "ffprobe") -> list[MediaInfo]:
+    out = []
+    for p in sorted(Path(directory).rglob("*")):
+        if p.is_file() and p.suffix.lower() in SUPPORTED:
+            try:
+                out.append(probe_media(p, ffprobe))
+            except MissingMediaError:
+                continue
+    return out
