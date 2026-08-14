@@ -99,14 +99,18 @@ def get_gguf_llm(model_path: str, device: str = "auto"):
     key = f"{model_path}|{device}"
     if key in _llm_cache:
         return _llm_cache[key]
-    from app.models.device import DeviceManager
-    dev = DeviceManager(device)
-    n_gpu = -1 if dev.resolve() == "cuda" else 0
     try:
         from llama_cpp import Llama
     except ImportError as e:
         raise RuntimeError("未安装 llama-cpp-python，请先 pip install -r requirements-models.txt") from e
     main_path, mmproj_path = _resolve_gguf_paths(model_path)
+    from app.models.device import DeviceManager
+    dev = DeviceManager(device)
+    # 显存感知：按主模型大小估算 GPU 层数
+    if dev.resolve() == "cuda":
+        n_gpu = dev.select_device(estimate_bytes=main_path.stat().st_size, total_layers=40)[1]
+    else:
+        n_gpu = 0
     kwargs = {"model_path": str(main_path), "n_gpu_layers": n_gpu, "verbose": False}
     if mmproj_path is not None:
         kwargs["mmproj"] = str(mmproj_path)

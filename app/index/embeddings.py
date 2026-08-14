@@ -20,7 +20,8 @@ def build_corpus(settings) -> list[tuple[str, str]]:
     """返回 [(shot_id, text)]；并在可用时写入 embeddings 表。"""
     db = Database(settings.footage_db)
     shots = db.get_all_shots()
-    emb = Embedder(settings.embedding.provider, settings.embedding.model, settings.embedding.device)
+    device = "cpu" if settings.gpu_enabled == "off" else settings.embedding.device
+    emb = Embedder(settings.embedding.provider, settings.embedding.model, device)
     rows = []
     for sh in shots:
         va = db.get_visual(sh["shot_id"])

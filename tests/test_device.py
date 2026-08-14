@@ -56,3 +56,12 @@ def test_select_device_nonpositive_layers_returns_cpu(monkeypatch):
 def test_resolve_explicit_device():
     assert DeviceManager("cpu").resolve() == "cpu"
     assert DeviceManager("cuda").resolve() == "cuda"
+
+
+def test_select_device_respects_gpu_enabled_off(monkeypatch):
+    monkeypatch.setattr("app.models.device._has_nvidia_smi", lambda: True)
+    monkeypatch.setattr("app.models.device._torch_cuda_available", lambda: True)
+    monkeypatch.setattr("app.models.device._llama_gpu_offload", lambda: True)
+    d = DeviceManager("off")  # config gpu_enabled: off 映射为 device="off"
+    dev, layers = d.select_device(estimate_bytes=2**30)
+    assert dev == "cpu" and layers == 0

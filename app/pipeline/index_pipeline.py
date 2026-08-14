@@ -14,9 +14,10 @@ def _get_vlm(settings):
     cfg = settings.vlm
     if cfg.provider not in ("local", "openai"):
         return None
-    key = (cfg.provider, cfg.model, cfg.device, cfg.base_url, cfg.api_key)
+    device = "cpu" if settings.gpu_enabled == "off" else cfg.device
+    key = (cfg.provider, cfg.model, device, cfg.base_url, cfg.api_key)
     if key not in _VLM_CACHE:
-        _VLM_CACHE[key] = VLM(cfg.provider, cfg.model, cfg.device, cfg.base_url, cfg.api_key)
+        _VLM_CACHE[key] = VLM(cfg.provider, cfg.model, device, cfg.base_url, cfg.api_key)
     return _VLM_CACHE[key]
 
 def run_index(settings, analyze=True, force_analyze=False, log=None) -> dict:

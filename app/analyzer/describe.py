@@ -96,7 +96,8 @@ def describe_video(settings, video_path, log=None, window: float = 5.0) -> Path:
 
     from app.models.vlm import VLM
     cfg = settings.vlm
-    vlm = VLM(cfg.provider, cfg.model, cfg.device, cfg.base_url, cfg.api_key) if cfg.provider in ("local", "openai") else None
+    device = "cpu" if settings.gpu_enabled == "off" else cfg.device
+    vlm = VLM(cfg.provider, cfg.model, device, cfg.base_url, cfg.api_key) if cfg.provider in ("local", "openai") else None
 
     shots = detect_shots(str(video_path), settings.scene_threshold,
                          settings.min_shot_duration, settings.ffmpeg)

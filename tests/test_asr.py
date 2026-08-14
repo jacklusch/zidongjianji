@@ -22,7 +22,7 @@ def test_asr_groups_sentences(monkeypatch):
                                    [1800, 1900], [1900, 2000], [2000, 2100]]}]
     class FakeFunasr:
         class AutoModel:
-            def __init__(self, model):
+            def __init__(self, model, device=None):
                 pass
             def generate(self, input):
                 return FakeModel().generate(input)
@@ -44,7 +44,7 @@ def test_asr_splits_on_long_gap(monkeypatch):
                                    [1000, 1100], [1100, 1200]]}]
     class FakeFunasr:
         class AutoModel:
-            def __init__(self, model):
+            def __init__(self, model, device=None):
                 pass
             def generate(self, input):
                 return FakeModel().generate(input)
@@ -61,7 +61,7 @@ def test_asr_no_timestamp_returns_single(monkeypatch):
     import sys
     class FakeFunasr:
         class AutoModel:
-            def __init__(self, model):
+            def __init__(self, model, device=None):
                 pass
             def generate(self, input):
                 return [{"text": "完整句子"}]

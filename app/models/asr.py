@@ -11,7 +11,10 @@ class ASR(ModelProvider):
             return []
         try:
             from funasr import AutoModel
-            model = AutoModel(model=self.model)
+            from app.models.device import DeviceManager
+            dev = DeviceManager(self.device)
+            model = AutoModel(model=self.model,
+                              device="cuda" if dev.resolve() == "cuda" else "cpu")
             res = model.generate(input=str(audio_path))
             segs = []
             for r in res:
