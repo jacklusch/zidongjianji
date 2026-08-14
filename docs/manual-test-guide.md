@@ -381,11 +381,87 @@ venv\Scripts\python.exe -m app.main plan scripts\demo.md --project demo2
 venv\Scripts\python.exe -m pytest tests/ -v
 ```
 
-**预期**：全部 PASS（当前基线 59 passed）。模型目录 `models\` 与 `config.yaml` 不入库（`git status` 不应显示它们）。
+**预期**：全部 PASS（当前基线 100 passed）。模型目录 `models\` 与 `config.yaml` 不入库（`git status` 不应显示它们）。
 
 ---
 
-## 7. 常见问题排查
+## 7. GPU 加速
+
+### 7.1 检测 NVIDIA GPU
+
+```powershell
+nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader
+```
+
+**预期**：输出一行 `NVIDIA GeForce RTX 3060, 12288 MiB, <空闲 MiB>`。若命令不存在（`nvidia-smi 不是内部或外部命令`），说明无 NVIDIA 驱动/GPU，系统按 CPU 模式运行。
+
+> 逻辑层：`app/models/device.py` 的 `_has_nvidia_smi()` / `_query_gpu()` 探测 GPU 与显存；`DeviceManager("auto").resolve_cuda_support()` 需 **torch CUDA 版 + llama.cpp GPU offload + nvidia-smi 三者同时为真** 才判定 `cuda`，否则回退 `cpu`。
+
+### 7.2 install.ps1 自动安装 CUDA 版依赖
+
+`scripts\install.ps1` 在安装完基础依赖后检测 GPU：
+
+```powershell
+$gpu = Get-Command nvidia-smi -ErrorAction SilentlyContinue
+if ($gpu) {  # 装 CUDA 版 torch / llama-cpp-python
+    ...pip install torch==2.13.0+cu121 --index-url .../whl/cu121
+    ...pip install llama-cpp-python --extra-index-url .../whl/cu121
+} else {     # 装 CPU 版模型依赖
+    ...pip install -r requirements-models.txt
+}
+...pip install -r requirements-models.txt  # 其余模型依赖（funasr/embedding 等）
+```
+
+**预期**：
+- 有 NVIDIA GPU（如 RTX 3060）→ 提示"检测到 NVIDIA GPU，安装 CUDA 版模型依赖..."，torch 变 CUDA 版（`torch.version.cuda` 非 None）。
+- 无 GPU → 提示"未检测到 NVIDIA GPU，安装 CPU 版模型依赖..."，按 CPU 版安装。
+- 两者都会在后续安装其余模型依赖（funasr/sentence-transformers 等）。
+
+> 已装过依赖的环境重跑不会覆盖已有版本；CUDA 版 torch 与 requirements-models.txt 的 `torch>=2.2` 兼容。
+
+### 7.3 config.yaml 的 gpu 段
+
+```yaml
+gpu:
+  enabled: auto        # auto|on|off
+  memory_fraction: 0.7 # 可用显存利用比例
+```
+
+- `enabled: auto`（默认）：有 CUDA 环境 + GPU 时自动用 GPU；否则 CPU。
+- `enabled: off`：强制关闭 GPU（所有适配器 `device` 强制为 `cpu`）。
+- `enabled: on`：走 `device: auto` 的模型按 CUDA 解析（仍受实际环境限制）。
+- `memory_fraction: 0.7`：GPU 显存利用比例，用于显存感知层数分配（`DeviceManager.select_device`）。
+
+> 模型段（`models.*.device`）仍为 `auto` 时，VLM 按模型大小与显存预算自动决定 GPU 层数；显存不足自动回退 CPU。
+
+### 7.4 确认模型在用 GPU
+
+```powershell
+# 1) CUDA 是否可用（CUDA 版 torch 时返回 True）
+venv\Scripts\python.exe -c "import torch; print('cuda:', torch.cuda.is_available(), 'torch:', torch.__version__)"
+
+# 2) DeviceManager 解析结果
+venv\Scripts\python.exe -c "from app.models.device import DeviceManager; print(DeviceManager('auto').resolve_cuda_support())"
+```
+
+**预期**：
+- CUDA 版依赖 → `cuda: True`，`resolve_cuda_support()['cuda']` 为 `True`。
+- CPU 版依赖（如本机当前环境 `2.13.0+cpu`）→ `cuda: False`，但 `gpu` 字段仍显示真实显卡（如 `{'name': 'NVIDIA GeForce RTX 3060', 'total_mb': 12288, ...}`），`resolve()` 返回 `cpu`——属预期，表示 GPU 存在但模型跑在 CPU。
+
+`describe`/`render` 是否用 GPU：
+- `describe`：日志出现 `device=cuda` / `n_gpu_layers=N（N>0）` 即为 GPU 推理；`n_gpu_layers=0` / `device=cpu` 为 CPU。
+- `render`：编码器自动探测——`app/editors/renderer.py` 的 `_pick_video_codec` 探测 ffmpeg 是否含 `h264_nvenc`，含则用 NVENC（`h264_nvenc`），否则回退 `libx264`；NVENC 失败会自动重试 `libx264`。可用 `bin\ffmpeg\bin\ffmpeg.exe -encoders | findstr nvenc` 直接确认编码器存在。
+
+```powershell
+# 直接看编码器是否选 NVENC
+venv\Scripts\python.exe -c "from app.editors.renderer import _pick_video_codec; from app.config.settings import load_settings; print(_pick_video_codec(load_settings().ffmpeg))"
+```
+
+**预期**：本机（RTX 3060 + NVENC ffmpeg）输出 `h264_nvenc`；无 NVENC 的环境输出 `libx264`。
+
+---
+
+## 8. 常见问题排查
 
 | 症状 | 原因 | 解决 |
 |---|---|---|

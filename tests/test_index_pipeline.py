@@ -46,6 +46,19 @@ def test_run_index_failed_file_does_not_abort(tmp_path, sample_video, ffmpeg, ff
     assert report["media"] == 1
     assert report["shots"] >= 1
 
+def test_get_vlm_respects_gpu_enabled_off(monkeypatch):
+    from app.pipeline.index_pipeline import _get_vlm
+    settings = load_settings()
+    settings.vlm.provider = "local"
+    settings.vlm.model = "models/vlm/x.gguf"
+    settings.gpu_enabled = "off"
+    v = _get_vlm(settings)
+    assert v is not None and v.device == "cpu"
+    settings.gpu_enabled = "auto"
+    v2 = _get_vlm(settings)
+    assert v2.device == settings.vlm.device
+
+
 def test_run_index_analyze_failure_does_not_abort(tmp_path, sample_video, ffmpeg, ffprobe, monkeypatch):
     import app.pipeline.index_pipeline as ip
     other = sample_video.parent / "other.mp4"

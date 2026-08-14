@@ -1,5 +1,8 @@
 from pathlib import Path
 from app.models.base import ModelProvider
+import logging
+
+log = logging.getLogger("asr")
 
 class ASR(ModelProvider):
     name = "asr"
@@ -11,7 +14,11 @@ class ASR(ModelProvider):
             return []
         try:
             from funasr import AutoModel
-            model = AutoModel(model=self.model)
+            from app.models.device import DeviceManager
+            dev = DeviceManager(self.device)
+            resolved = "cuda" if dev.resolve() == "cuda" else "cpu"
+            log.info("ASR(FunASR) 设备决策 device=%s", resolved)
+            model = AutoModel(model=self.model, device=resolved)
             res = model.generate(input=str(audio_path))
             segs = []
             for r in res:

@@ -109,7 +109,7 @@ def test_vlm_local_text_completion(monkeypatch):
         def __call__(self, prompt, **kw):
             return {"choices": [{"text": '{"a": 1}'}]}
     monkeypatch.setattr("app.models.vlm.get_gguf_llm",
-                        lambda model_path, device: (FakeLLM(), None))
+                        lambda model_path, device, memory_fraction=0.7: (FakeLLM(), None))
     v = VLM(provider="local", model="models/vlm/x.gguf", device="cpu")
     assert v.describe([], "prompt") == {"a": 1}
 
@@ -118,7 +118,7 @@ def test_vlm_local_frames_without_mmproj_falls_back_to_text(monkeypatch):
         def __call__(self, prompt, **kw):
             return {"choices": [{"text": '{"ok": true}'}]}
     monkeypatch.setattr("app.models.vlm.get_gguf_llm",
-                        lambda model_path, device: (FakeLLM(), None))
+                        lambda model_path, device, memory_fraction=0.7: (FakeLLM(), None))
     v = VLM(provider="local", model="models/vlm/x.gguf", device="cpu")
     assert v.describe([object()], "prompt") == {"ok": True}
 
@@ -159,6 +159,49 @@ def test_gguf_cache_multientry(tmp_path, monkeypatch):
     llm2, _ = get_gguf_llm(mpath, "auto")
     assert len(calls) == 2
     assert llm2 is not None
+
+def test_llm_local_auto_device_no_crash(monkeypatch):
+    # 无 torch CUDA 时 torch.device("cpu") 正常
+    from app.models.llm import LLM
+    monkeypatch.setattr("app.models.device.DeviceManager.resolve", lambda self: "cpu")
+    llm = LLM("local", "m", "auto")
+    assert llm.device == "auto"  # 构造不崩
+
+
+def test_llm_local_generate_uses_resolved_device(monkeypatch):
+    import sys, types
+    calls = {}
+    class FakeTensor:
+        def to(self, d):
+            return self
+    class FakeBatch(dict):
+        def to(self, d):
+            return self
+    class FakeM:
+        def to(self, d):
+            calls["device"] = d
+            return self
+        def generate(self, **kw):
+            return [FakeTensor()]
+    class FakeTok:
+        @staticmethod
+        def from_pretrained(m):
+            calls["tok"] = m
+            return FakeTok()
+        def __call__(self, prompt, return_tensors="pt"):
+            return FakeBatch(input_ids=FakeTensor())
+        def decode(self, out, skip_special_tokens=True):
+            return "ok"
+    class FakeTransformers:
+        AutoModelForCausalLM = type("AM", (), {"from_pretrained": staticmethod(lambda m: FakeM())})
+        AutoTokenizer = FakeTok
+    monkeypatch.setitem(sys.modules, "transformers", FakeTransformers)
+    monkeypatch.setattr("app.models.device.DeviceManager.resolve", lambda self: "cpu")
+    from app.models.llm import LLM
+    out = LLM(provider="local", model="m", device="auto").generate("hi")
+    assert out == "ok"
+    assert str(calls["device"]) == "cpu"
+
 
 def test_llm_openai_calls_client(monkeypatch):
     llm = LLM(provider="openai", model="gpt-4o-mini", device="cpu", base_url="https://api.x.com/v1", api_key="sk-test")

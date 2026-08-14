@@ -22,11 +22,13 @@ class LLM(ModelProvider):
         try:
             from transformers import AutoModelForCausalLM, AutoTokenizer
             import torch
+            from app.models.device import DeviceManager
+            dev = DeviceManager(self.device)
+            torch_device = torch.device(dev.resolve())
             tok = AutoTokenizer.from_pretrained(self.model)
             m = AutoModelForCausalLM.from_pretrained(self.model)
-            dev = torch.device(self.device)
-            m = m.to(dev)
-            inp = tok(prompt, return_tensors="pt").to(dev)
+            m = m.to(torch_device)
+            inp = tok(prompt, return_tensors="pt").to(torch_device)
             out = m.generate(**inp, max_new_tokens=512)
             return tok.decode(out[0], skip_special_tokens=True)
         except Exception as e:

@@ -14,6 +14,7 @@ _DEFAULTS = {
     "matching": {"top_k": 20, "rerank_k": 5},
     "index": {"frames_min": 3, "frames_max": 8},
     "render": {"resolution": "1920x1080", "fps": 30, "format": "mp4"},
+    "gpu": {"enabled": "auto", "memory_fraction": 0.7},
 }
 
 @dataclass
@@ -53,6 +54,8 @@ class Settings:
     height: int = 1080
     fps: int = 30
     video_format: str = "mp4"
+    gpu_enabled: str = "auto"
+    gpu_memory_fraction: float = 0.7
 
     @property
     def footage_db(self) -> Path:
@@ -109,6 +112,8 @@ def load_settings(config_path: Path | None = None) -> Settings:
         frames_max=int(merge["index"]["frames_max"]),
         fps=int(merge["render"]["fps"]),
         video_format=merge["render"]["format"],
+        gpu_enabled=merge["gpu"]["enabled"],
+        gpu_memory_fraction=float(merge["gpu"]["memory_fraction"]),
         width=int(w), height=int(h),
     )
     if (root / "bin" / "ffmpeg" / "bin" / "ffmpeg.exe").exists():

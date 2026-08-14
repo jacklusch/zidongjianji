@@ -9,11 +9,12 @@ from app.timeline.schema import EditPlan
 from app.timeline.planner import build_timeline
 from app.timeline.validator import validate_edit_plan
 from app.models.llm import LLM
+from app.models.device import resolve_device
 from dataclasses import asdict
 
 def run_plan(settings, script_path: Path, project: str = "demo", log=None) -> Path:
     script_text = script_path.read_text(encoding="utf-8")
-    llm = LLM(settings.llm.provider, settings.llm.model, settings.llm.device,
+    llm = LLM(settings.llm.provider, settings.llm.model, resolve_device(settings, settings.llm),
               base_url=settings.llm.base_url, api_key=settings.llm.api_key)
     segs = parse_script(script_text, llm=llm)
     proj_dir = settings.projects_dir / project

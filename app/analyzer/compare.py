@@ -1,6 +1,7 @@
 """本地 VLM 与线上 VLM 的画面对比（供人工校验本地描述）。"""
 from pathlib import Path
 from app.models.vlm import VLM
+from app.models.device import resolve_device
 from app.analyzer.scene import detect_shots, is_image
 from app.analyzer.describe import _subdivide, _shot_frames, _fmt_range
 from app.analyzer.visual import fallback_visual_analysis, _VLM_PROMPT
@@ -59,11 +60,13 @@ def compare_video(settings, video_path, log=None, window: float = 5.0) -> Path:
     thumb_dir = out_dir / "tmp_thumb"
     thumb_dir.mkdir(parents=True, exist_ok=True)
 
-    local_vlm = VLM(settings.vlm.provider, settings.vlm.model, settings.vlm.device,
-                    settings.vlm.base_url, settings.vlm.api_key)
+    local_vlm = VLM(settings.vlm.provider, settings.vlm.model, resolve_device(settings, settings.vlm),
+                    settings.vlm.base_url, settings.vlm.api_key,
+                    memory_fraction=getattr(settings, "gpu_memory_fraction", 0.7))
     compare_cfg = settings.vlm_compare
-    online_vlm = VLM(compare_cfg.provider, compare_cfg.model, compare_cfg.device,
-                     compare_cfg.base_url, compare_cfg.api_key)
+    online_vlm = VLM(compare_cfg.provider, compare_cfg.model, resolve_device(settings, compare_cfg),
+                     compare_cfg.base_url, compare_cfg.api_key,
+                     memory_fraction=getattr(settings, "gpu_memory_fraction", 0.7))
 
     shots = _subdivide(detect_shots(str(video_path), settings.scene_threshold,
                                     settings.min_shot_duration, settings.ffmpeg),
