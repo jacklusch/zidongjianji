@@ -381,7 +381,7 @@ venv\Scripts\python.exe -m app.main plan scripts\demo.md --project demo2
 venv\Scripts\python.exe -m pytest tests/ -v
 ```
 
-**预期**：全部 PASS（当前基线 59 passed）。模型目录 `models\` 与 `config.yaml` 不入库（`git status` 不应显示它们）。
+**预期**：全部 PASS（当前基线 100 passed）。模型目录 `models\` 与 `config.yaml` 不入库（`git status` 不应显示它们）。
 
 ---
 

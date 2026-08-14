@@ -12,13 +12,12 @@ $py = Join-Path $root "venv\Scripts\python.exe"
 $gpu = Get-Command nvidia-smi -ErrorAction SilentlyContinue
 if ($gpu) {
     Write-Host "检测到 NVIDIA GPU，安装 CUDA 版模型依赖..."
-    & $py -m pip install "torch==2.13.0+cu121" --index-url https://download.pytorch.org/whl/cu121
+    & $py -m pip install "torch==2.13.0+cu121" "torchaudio==2.13.0+cu121" --index-url https://download.pytorch.org/whl/cu121
     & $py -m pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
 } else {
     Write-Host "未检测到 NVIDIA GPU，安装 CPU 版模型依赖..."
-    & $py -m pip install -r requirements-models.txt
 }
-& $py -m pip install -r requirements-models.txt  # 其余模型依赖（funasr/sentence-transformers 等）
+& $py -m pip install -r requirements-models.txt  # 其余模型依赖（CPU 版 / funasr/sentence-transformers 等）
 # FFmpeg：PATH 或 bin\ffmpeg
 $ff = Get-Command ffmpeg -ErrorAction SilentlyContinue
 if (-not $ff -and -not (Test-Path "bin\ffmpeg\bin\ffmpeg.exe") -and -not (Test-Path "bin\ffmpeg\ffmpeg.exe")) {
