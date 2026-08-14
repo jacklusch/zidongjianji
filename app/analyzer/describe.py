@@ -95,9 +95,11 @@ def describe_video(settings, video_path, log=None, window: float = 5.0) -> Path:
     thumb_dir.mkdir(parents=True, exist_ok=True)
 
     from app.models.vlm import VLM
+    from app.models.device import resolve_device
     cfg = settings.vlm
-    device = "cpu" if settings.gpu_enabled == "off" else cfg.device
-    vlm = VLM(cfg.provider, cfg.model, device, cfg.base_url, cfg.api_key) if cfg.provider in ("local", "openai") else None
+    device = resolve_device(settings, cfg)
+    vlm = VLM(cfg.provider, cfg.model, device, cfg.base_url, cfg.api_key,
+              memory_fraction=getattr(settings, "gpu_memory_fraction", 0.7)) if cfg.provider in ("local", "openai") else None
 
     shots = detect_shots(str(video_path), settings.scene_threshold,
                          settings.min_shot_duration, settings.ffmpeg)

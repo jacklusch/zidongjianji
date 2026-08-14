@@ -1,5 +1,6 @@
 from app.index.database import Database
 from app.models.embedding import Embedder
+from app.models.device import resolve_device
 
 def shot_search_text(shot: dict, va: dict | None, trs: list[dict]) -> str:
     parts = [shot.get("source", "")]
@@ -20,7 +21,7 @@ def build_corpus(settings) -> list[tuple[str, str]]:
     """返回 [(shot_id, text)]；并在可用时写入 embeddings 表。"""
     db = Database(settings.footage_db)
     shots = db.get_all_shots()
-    device = "cpu" if settings.gpu_enabled == "off" else settings.embedding.device
+    device = resolve_device(settings, settings.embedding)
     emb = Embedder(settings.embedding.provider, settings.embedding.model, device)
     rows = []
     for sh in shots:

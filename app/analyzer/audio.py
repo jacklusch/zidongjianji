@@ -1,9 +1,10 @@
 import subprocess
 from app.models.asr import ASR
+from app.models.device import resolve_device
 
 def transcribe(settings, video_path: str, start: float, end: float, max_dur: float = 30.0) -> list[dict]:
     """截取 [start,end] 音频段后调用 ASR（provider=none 时返回 []）。"""
-    device = "cpu" if settings.gpu_enabled == "off" else settings.asr.device
+    device = resolve_device(settings, settings.asr)
     w = ASR(settings.asr.provider, settings.asr.model, device,
             base_url=settings.asr.base_url, api_key=settings.asr.api_key)
     if not w.available():

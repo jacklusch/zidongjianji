@@ -1,7 +1,10 @@
 import json
+import logging
 import re
 from pathlib import Path
 from app.models.base import ModelProvider
+
+log = logging.getLogger("vlm")
 
 _llm_cache = {}
 
@@ -89,14 +92,14 @@ def _resolve_gguf_paths(model_path: str):
     main = sorted(mains, key=rank)[0]
     return main, _find_mmproj(p, main.name) if mmproj else (main, None)
 
-def get_gguf_llm(model_path: str, device: str = "auto"):
+def get_gguf_llm(model_path: str, device: str = "auto", memory_fraction: float = 0.7):
     """模块级单例：同一 GGUF 只加载一次（VLM 与 reranker 复用）。
 
     返回 (llm, mmproj_path 或 None)。model_path 可为目录，自动 glob 出主
     模型（优先含 q4 量化名、其次最大，mmproj-* 除外）与多模态 mmproj。
     """
     global _llm_cache
-    key = f"{model_path}|{device}"
+    key = f"{model_path}|{device}|{memory_fraction}"
     if key in _llm_cache:
         return _llm_cache[key]
     try:
@@ -107,27 +110,41 @@ def get_gguf_llm(model_path: str, device: str = "auto"):
     from app.models.device import DeviceManager
     dev = DeviceManager(device)
     # 显存感知：按主模型大小估算 GPU 层数
-    if dev.resolve() == "cuda":
-        n_gpu = dev.select_device(estimate_bytes=main_path.stat().st_size, total_layers=40)[1]
+    resolved = dev.resolve()
+    if resolved == "cuda":
+        n_gpu = dev.select_device(estimate_bytes=main_path.stat().st_size,
+                                  total_layers=40, memory_fraction=memory_fraction)[1]
     else:
         n_gpu = 0
+    log.info("GGUF 设备决策 model=%s device=%s n_gpu_layers=%d memory_fraction=%.2f",
+             main_path.name, resolved, n_gpu, memory_fraction)
     kwargs = {"model_path": str(main_path), "n_gpu_layers": n_gpu, "verbose": False}
     if mmproj_path is not None:
         kwargs["mmproj"] = str(mmproj_path)
-    llm = Llama(**kwargs)
+    try:
+        llm = Llama(**kwargs)
+    except Exception as e:
+        if n_gpu > 0:
+            log.warning("GPU 加载失败，回退 CPU: %s", e)
+            kwargs["n_gpu_layers"] = 0
+            llm = Llama(**kwargs)
+            log.info("llama.cpp 已在 CPU 重载（n_gpu_layers=0）")
+        else:
+            raise
     _llm_cache[key] = (llm, mmproj_path)
     return llm, mmproj_path
 
 class VLM(ModelProvider):
     name = "vlm"
-    def __init__(self, provider="none", model="", device="auto", base_url="", api_key=""):
+    def __init__(self, provider="none", model="", device="auto", base_url="", api_key="", memory_fraction: float = 0.7):
         super().__init__(provider, model, device, base_url, api_key)
+        self.memory_fraction = memory_fraction
     def describe(self, frames, prompt: str) -> dict:
         if not self.available():
             raise RuntimeError("VLM 未启用（provider=none）")
         if self.provider == "openai":
             return self._describe_openai(frames, prompt)
-        llm, mmproj_path = get_gguf_llm(self.model, self.device)
+        llm, mmproj_path = get_gguf_llm(self.model, self.device, memory_fraction=self.memory_fraction)
         import tempfile, os
         # 确定性推理：零温度消除随机幻觉，top_p=1 全量采样，max_tokens 上限约束
         _det = {"temperature": 0.0, "top_p": 1.0, "max_tokens": 700}

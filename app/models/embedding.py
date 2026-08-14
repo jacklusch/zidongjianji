@@ -1,4 +1,7 @@
 from app.models.base import ModelProvider
+import logging
+
+log = logging.getLogger("embedding")
 
 class Embedder(ModelProvider):
     name = "embedding"
@@ -13,8 +16,10 @@ class Embedder(ModelProvider):
             import torch
             from app.models.device import DeviceManager
             dev = DeviceManager(self.device)
+            resolved = dev.resolve()
+            log.info("Embedding 设备决策 device=%s", resolved)
             m = SentenceTransformer(self.model)
-            v = m.encode(texts, device=dev.resolve(), convert_to_numpy=True)
+            v = m.encode(texts, device=resolved, convert_to_numpy=True)
             return [list(x) for x in v]
         except Exception as e:
             raise RuntimeError(f"Embedding 失败: {e}") from e

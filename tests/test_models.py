@@ -109,7 +109,7 @@ def test_vlm_local_text_completion(monkeypatch):
         def __call__(self, prompt, **kw):
             return {"choices": [{"text": '{"a": 1}'}]}
     monkeypatch.setattr("app.models.vlm.get_gguf_llm",
-                        lambda model_path, device: (FakeLLM(), None))
+                        lambda model_path, device, memory_fraction=0.7: (FakeLLM(), None))
     v = VLM(provider="local", model="models/vlm/x.gguf", device="cpu")
     assert v.describe([], "prompt") == {"a": 1}
 
@@ -118,7 +118,7 @@ def test_vlm_local_frames_without_mmproj_falls_back_to_text(monkeypatch):
         def __call__(self, prompt, **kw):
             return {"choices": [{"text": '{"ok": true}'}]}
     monkeypatch.setattr("app.models.vlm.get_gguf_llm",
-                        lambda model_path, device: (FakeLLM(), None))
+                        lambda model_path, device, memory_fraction=0.7: (FakeLLM(), None))
     v = VLM(provider="local", model="models/vlm/x.gguf", device="cpu")
     assert v.describe([object()], "prompt") == {"ok": True}
 

@@ -2,6 +2,10 @@ import os
 import shutil
 import subprocess
 
+def resolve_device(settings, cfg) -> str:
+    """按 settings.gpu_enabled 把 cfg.device 映射为实际设备。"""
+    return "cpu" if getattr(settings, "gpu_enabled", "auto") == "off" else cfg.device
+
 def _has_nvidia_smi() -> bool:
     return shutil.which("nvidia-smi") is not None
 

@@ -4,6 +4,7 @@ from app.analyzer.scene import is_image
 from app.analyzer.frames import sample_times, extract_frame
 from app.analyzer.visual import fallback_visual_analysis, vlm_visual_analysis
 from app.models.vlm import VLM
+from app.models.device import resolve_device
 from app.analyzer.audio import transcribe
 
 _VLM_CACHE = {}
@@ -14,10 +15,11 @@ def _get_vlm(settings):
     cfg = settings.vlm
     if cfg.provider not in ("local", "openai"):
         return None
-    device = "cpu" if settings.gpu_enabled == "off" else cfg.device
+    device = resolve_device(settings, cfg)
     key = (cfg.provider, cfg.model, device, cfg.base_url, cfg.api_key)
     if key not in _VLM_CACHE:
-        _VLM_CACHE[key] = VLM(cfg.provider, cfg.model, device, cfg.base_url, cfg.api_key)
+        _VLM_CACHE[key] = VLM(cfg.provider, cfg.model, device, cfg.base_url, cfg.api_key,
+                              memory_fraction=getattr(settings, "gpu_memory_fraction", 0.7))
     return _VLM_CACHE[key]
 
 def run_index(settings, analyze=True, force_analyze=False, log=None) -> dict:
