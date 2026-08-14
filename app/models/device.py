@@ -63,6 +63,8 @@ class DeviceManager:
             return "cpu", 0
         if self.device not in ("auto", "cuda"):
             return "cpu", 0
+        if estimate_bytes <= 0 or total_layers <= 0:
+            return "cpu", 0
         info = self.resolve_cuda_support()
         if not info["cuda"]:
             return "cpu", 0
