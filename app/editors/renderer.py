@@ -1,10 +1,25 @@
 import json
+import subprocess
 from pathlib import Path
 from app.utils.process import run
 
 
+def _probe_nvenc(ffmpeg: str) -> bool:
+    """探测 ffmpeg 是否支持 h264_nvenc。"""
+    try:
+        out = subprocess.run([ffmpeg, "-hide_banner", "-encoders"], capture_output=True, text=True, timeout=20)
+        return "h264_nvenc" in out.stdout
+    except Exception:
+        return False
+
+
+def _pick_video_codec(ffmpeg: str) -> str:
+    return "h264_nvenc" if _probe_nvenc(ffmpeg) else "libx264"
+
+
 def _normalize_timeline(plan: dict, outdir: Path, ffmpeg: str, width: int, height: int, fps: int,
                         assets_root: Path | None = None) -> list[Path]:
+    codec = _pick_video_codec(ffmpeg)
     parts = []
     for item in plan.get("timeline", []):
         src = Path(item["source"])
@@ -15,7 +30,7 @@ def _normalize_timeline(plan: dict, outdir: Path, ffmpeg: str, width: int, heigh
             continue
         part = outdir / f"part_{item['script_id']:02d}.mp4"
         try:
-            _render_clip(src, item.get("in", 0.0), seg_dur, part, ffmpeg, width, height, fps)
+            _render_clip(src, item.get("in", 0.0), seg_dur, part, ffmpeg, width, height, fps, codec)
         except Exception:
             # 单片段失败不崩溃整个项目：跳过并在 stdout 提示（规格 22 节）
             print(f"[render] 片段渲染失败已跳过: {src}")
@@ -25,17 +40,26 @@ def _normalize_timeline(plan: dict, outdir: Path, ffmpeg: str, width: int, heigh
 
 
 def _render_clip(src: Path, start: float, dur: float, out: Path, ffmpeg: str,
-                 width: int, height: int, fps: int):
+                 width: int, height: int, fps: int, codec: str = "libx264"):
     ext = src.suffix.lower()
-    if ext in {".jpg", ".jpeg", ".png", ".webp"}:
-        cmd = [ffmpeg, "-y", "-loop", "1", "-i", str(src), "-t", f"{dur:.3f}",
-               "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,fps={fps}",
-               "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(out)]
-    else:
-        cmd = [ffmpeg, "-y", "-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", str(src),
-               "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,fps={fps}",
-               "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(out)]
-    run(cmd, timeout=600)
+
+    def build_cmd(vcodec: str) -> list[str]:
+        vf = (f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+              f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,fps={fps}")
+        if ext in {".jpg", ".jpeg", ".png", ".webp"}:
+            return [ffmpeg, "-y", "-loop", "1", "-i", str(src), "-t", f"{dur:.3f}",
+                    "-vf", vf, "-c:v", vcodec, "-pix_fmt", "yuv420p", "-an", str(out)]
+        return [ffmpeg, "-y", "-ss", f"{start:.3f}", "-t", f"{dur:.3f}", "-i", str(src),
+                "-vf", vf, "-c:v", vcodec, "-pix_fmt", "yuv420p", "-c:a", "aac", str(out)]
+
+    try:
+        run(build_cmd(codec), timeout=600)
+    except Exception:
+        if codec == "h264_nvenc":
+            # NVENC 失败（无 GPU/驱动）回退 libx264 重试一次
+            run(build_cmd("libx264"), timeout=600)
+        else:
+            raise
 
 
 def _concat(parts: list[Path], out: Path, ffmpeg: str) -> Path:
