@@ -12,3 +12,6 @@ models:
   asr:       {provider: none, model: "", device: auto, base_url: "", api_key: ""}
   embedding: {provider: none, model: "", device: auto, base_url: "", api_key: ""}
 # 其余配置段（video/matching/index/render）保持不变，见 README 或由 scripts/install.ps1 生成
+gpu:
+  enabled: auto        # auto|on|off
+  memory_fraction: 0.7 # 可用显存利用比例

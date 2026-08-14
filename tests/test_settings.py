@@ -17,3 +17,9 @@ def test_settings_has_vlm_compare():
     s = load_settings()
     assert hasattr(s, "vlm_compare")
     assert isinstance(s.vlm_compare.base_url, str)
+
+def test_settings_has_gpu_config():
+    s = load_settings()
+    assert hasattr(s, "gpu_enabled")
+    assert hasattr(s, "gpu_memory_fraction")
+    assert s.gpu_memory_fraction > 0.0
