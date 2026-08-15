@@ -187,17 +187,29 @@ venv\Scripts\python.exe -c "from app.models.device import DeviceManager; d=Devic
 
 ### 3.2 启用 GPU（需重装依赖）
 
-当前环境若 `resolve()` 为 `cpu` 但 `nvidia-smi` 有 GPU，说明装的是 CPU 版依赖。运行安装脚本会自动检测：
+当前环境若 `resolve()` 为 `cpu` 但 `nvidia-smi` 有 GPU，说明装的是 CPU 版依赖。分两步：
 
-```powershell
-.\scripts\install.ps1   # 检测到 GPU 自动装 CUDA 版 torch/torchaudio/llama-cpp
-```
-
-或手动：
+**步骤 1 — CUDA 版 torch/torchaudio**（有 NVIDIA GPU 时）：
 
 ```powershell
 venv\Scripts\python.exe -m pip install "torch==2.5.1+cu121" "torchaudio==2.5.1+cu121" --index-url https://download.pytorch.org/whl/cu121
-venv\Scripts\python.exe -m pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
+```
+
+**步骤 2 — CUDA 版 llama-cpp-python**（⚠️ Windows 无预编译 CUDA wheel，必须源码编译）：
+
+```powershell
+# 前置：VS2022 + CUDA Toolkit + cmake（已装则直接跑）
+.\scripts\compile_llama_cuda.bat    # 编译约 30-60 分钟
+```
+
+> abetlen 官方 cu121 索引在 Windows 上**不提供** CUDA 预编译 wheel（实测 `--extra-index-url` 拿到的仍是 CPU 版）。`scripts\compile_llama_cuda.bat` 用 VS + CUDA 从源码编译，完成后 `llama_supports_gpu_offload()` 返回 True。
+
+**验证 GPU 生效**：
+
+```powershell
+venv\Scripts\python.exe -c "from llama_cpp import llama_cpp; print('GPU offload:', llama_cpp.llama_supports_gpu_offload())"
+venv\Scripts\python.exe -c "from app.models.device import DeviceManager; print('当前设备:', DeviceManager('auto').resolve())"
+# 期望：GPU offload: True，当前设备: cuda
 ```
 
 ### 3.3 GPU 配置
