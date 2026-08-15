@@ -61,7 +61,7 @@ def parse_vlm_json(raw: str) -> dict:
     return raw
 
 def _find_mmproj(directory: Path, main_name: str = ""):
-    files = sorted(directory.glob("mmproj-*.gguf"))
+    files = sorted(f for f in directory.glob("*.gguf") if "mmproj" in f.name.lower())
     if not files:
         return None
     if main_name:
@@ -82,8 +82,8 @@ def _resolve_gguf_paths(model_path: str):
     files = sorted(p.glob("*.gguf"))
     if not files:
         raise RuntimeError(f"目录中未找到 .gguf 文件: {model_path}")
-    mmproj = [f for f in files if f.name.startswith("mmproj")]
-    mains = [f for f in files if not f.name.startswith("mmproj")]
+    mmproj = [f for f in files if "mmproj" in f.name.lower()]
+    mains = [f for f in files if "mmproj" not in f.name.lower()]
     if not mains:
         raise RuntimeError(f"目录中未找到主模型 .gguf（仅含 mmproj）: {model_path}")
     def rank(f):
