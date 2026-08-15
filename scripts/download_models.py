@@ -32,9 +32,14 @@ def _require_venv() -> None:
 
 MODELS = {
     "vlm": {
-        "hf": "Qwen/Qwen3-VL-4B-Instruct-GGUF",
-        "ms": "Qwen/Qwen3-VL-4B-Instruct-GGUF",
-        "note": "VLM 描述 + reranker（GGUF Q4_K_M，4B 更准）",
+        "hf": "internlm/CapRL-Qwen3VL-4B-GGUF",
+        "ms": "internlm/CapRL-Qwen3VL-4B-GGUF",
+        "note": "VLM（CapRL-Qwen3VL-4B Q4_K_M，RL 优化视频理解）",
+    },
+    "vlm8b": {
+        "hf": "Jobaar/CapRL-InternVL3.5-8B-GGUF",
+        "ms": "Jobaar/CapRL-InternVL3.5-8B-GGUF",
+        "note": "VLM 高精度（CapRL-InternVL3.5-8B Q4_K_M，识别更强，需 8GB 显存）",
     },
     "vlm2b": {
         "hf": "Qwen/Qwen3-VL-2B-Instruct-GGUF",
