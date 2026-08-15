@@ -71,6 +71,19 @@ def test_vlm_visual_analysis_aggregates_frames():
     assert "第一帧" in va.description and "第二帧" in va.description
 
 
+def test_vlm_visual_analysis_uses_main_subject():
+    from app.analyzer.visual import vlm_visual_analysis
+    class FakeVLM:
+        def describe(self, frames, prompt):
+            return {"main_subject": "机械设备", "description": "画面中的主体", "objects": [],
+                    "actions": [], "environment": "车间", "shot_type": "medium",
+                    "camera_motion": "static", "people_count": 0, "visual_quality": 0.5}
+    va = vlm_visual_analysis([object()], FakeVLM())
+    assert "主体：机械设备" in va.description
+    # objects 为空时回退用 main_subject
+    assert "机械设备" in va.objects
+
+
 def test_vlm_visual_analysis_single_frame_failure_skips():
     from app.analyzer.visual import vlm_visual_analysis
     calls = {"n": 0}

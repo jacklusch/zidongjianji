@@ -46,11 +46,15 @@ def fallback_visual_analysis(frames) -> VisualAnalysis:
 
 
 _VLM_PROMPT = (
-    "请分析这张视频画面，只输出一个 JSON 对象（不要输出其他内容），字段："
-    "description(一句话中文描述画面), objects(主要物体中文列表), "
-    "actions(正在发生的动作中文列表), environment(环境/场景中文), "
+    "请仔细分析这张视频画面，只输出一个 JSON 对象（不要输出其他内容），字段："
+    "main_subject(画面中最主要的主体是什么，如机械设备/车辆/人物/产品等，若不确定写'不确定'), "
+    "description(基于主要主体的一句话中文描述，只描述你确凿看到的，不要猜测), "
+    "objects(画面中实际出现的主要物体中文列表，未看清的不写), "
+    "actions(主体正在发生的动作或状态中文列表), "
+    "environment(环境/场景中文), "
     "shot_type(镜头类型: close/medium/wide), camera_motion(运镜: static/pan/tilt/zoom), "
     "people_count(人数整数), visual_quality(0到1之间的画面质量评分)。"
+    "要求：主体优先识别，描述实事求是，画面模糊或不确定的内容不要编造，用'模糊'或'不确定'标注。"
 )
 
 
@@ -76,6 +80,7 @@ def vlm_visual_analysis(frames, vlm) -> VisualAnalysis:
     all_objects, all_actions = [], []
     environments = []
     descriptions = []
+    subjects = []
     people = 0
     q_sum = 0.0
     shot_types, cams = [], []
@@ -89,10 +94,15 @@ def vlm_visual_analysis(frames, vlm) -> VisualAnalysis:
         for a in actions:
             if a not in all_actions:
                 all_actions.append(a)
+        subject = str(d.get("main_subject", "") or "")
+        if subject and subject != "不确定" and subject not in subjects:
+            subjects.append(subject)
         env = str(d.get("environment", "") or "")
         if env and env not in environments:
             environments.append(env)
         desc = str(d.get("description", "") or "")
+        if subject and subject != "不确定":
+            desc = f"{desc}（主体：{subject}）"
         if desc and desc not in descriptions:
             descriptions.append(desc)
         try:
@@ -113,6 +123,8 @@ def vlm_visual_analysis(frames, vlm) -> VisualAnalysis:
     desc_text = " ".join(descriptions)
     if needs_review:
         desc_text += "（需人工复核）"
+    if not merged_objects:
+        merged_objects = list(subjects) if subjects else []
     return VisualAnalysis(
         description=desc_text,
         objects=merged_objects,
